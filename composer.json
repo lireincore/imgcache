@@ -1,0 +1,24 @@
+{
+    "name": "lireincore/imgcache",
+    "description": "Image effect, thumb and cache",
+    "version": "0.2.0",
+    "type": "library",
+    "keywords": ["image", "cache", "thumb", "effect", "resize", "filter", "action"],
+    "homepage": "https://github.com/lireincore/imgcache",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "LireinCore",
+            "email": "lirein@inbox.ru"
+        }
+    ],
+    "require": {
+        "php": ">=5.4",
+        "imagine/imagine": "~0.6.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "LireinCore\\ImgCache\\": "src"
+        }
+    }
+}
