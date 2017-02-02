@@ -7,7 +7,7 @@ class ImgCache
     /**
      * @var array
      */
-    private $_config;
+    private $_originalConfig;
 
     /**
      * @var string
@@ -70,11 +70,15 @@ class ImgCache
     private $_effectsRegistry = [
         'crop' => '\LireinCore\ImgCache\Effects\Crop',
         'fit' => '\LireinCore\ImgCache\Effects\Fit',
-        //'flip' => '\LireinCore\ImgCache\Effects\Flip',
+        'flip' => '\LireinCore\ImgCache\Effects\Flip',
         'overlay' => '\LireinCore\ImgCache\Effects\Overlay',
         'resize' => '\LireinCore\ImgCache\Effects\Resize',
-        //'rotate' => '\LireinCore\ImgCache\Effects\Rotate',
+        'rotate' => '\LireinCore\ImgCache\Effects\Rotate',
         'scale' => '\LireinCore\ImgCache\Effects\Scale',
+        'negative' => '\LireinCore\ImgCache\Effects\Negative',
+        'grayscale' => '\LireinCore\ImgCache\Effects\Grayscale',
+        'gamma' => '\LireinCore\ImgCache\Effects\Gamma',
+        'blur' => '\LireinCore\ImgCache\Effects\Blur',
     ];
 
     /**
@@ -107,7 +111,7 @@ class ImgCache
             $config = require($config);
         }
 
-        $this->_config = $config;
+        $this->_originalConfig = $config;
 
         if (isset($config['driver'])) {
             $this->driver = $config['driver'];
@@ -161,7 +165,7 @@ class ImgCache
      */
     public function getConfig()
     {
-        return $this->_config;
+        return $this->_originalConfig;
     }
 
     /**
@@ -283,7 +287,8 @@ class ImgCache
         if (!empty($preset['effects'])) {
             foreach ($preset['effects'] as $effectData) {
                 if (class_exists($effectsList[$effectData['type']])) {
-                    $effect = $this->create_class_array_assoc($effectsList[$effectData['type']], $effectData['params']);
+                    $params = empty($effectData['params']) ? [] : $effectData['params'];
+                    $effect = $this->create_class_array_assoc($effectsList[$effectData['type']], $params);
                     $image->apply($effect);
                 }
             }

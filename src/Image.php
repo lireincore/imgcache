@@ -212,7 +212,7 @@ class Image
      * @param int $transparency
      * @return $this
      */
-    public function create($width, $height, $color = '#fff', $transparency = 100)
+    public function create($width, $height, $color = '#fff', $transparency = 0)
     {
         $size = new Box($width, $height);
         $palette = new RGB();
@@ -269,6 +269,83 @@ class Image
             $this->setWidth($width);
             $this->setHeight($height);
         }
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function flipHorizontally()
+    {
+        $this->getImg()->flipHorizontally();
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function flipVertically()
+    {
+        $this->getImg()->flipVertically();
+
+        return $this;
+    }
+
+    /**
+     * @param float $angle
+     * @param string $bgcolor
+     * @param int $bgtransparency
+     * @return $this
+     */
+    public function rotate($angle, $bgcolor = '#fff', $bgtransparency = 0)
+    {
+        $palette = new RGB();
+        $color = $palette->color($bgcolor, $bgtransparency);
+        $this->getImg()->rotate($angle, $color);
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function negative()
+    {
+        $this->getImg()->effects()->negative();
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function grayscale()
+    {
+        $this->getImg()->effects()->grayscale();
+
+        return $this;
+    }
+
+    /**
+     * @param float $correction
+     * @return $this
+     */
+    public function gamma($correction)
+    {
+        $this->getImg()->effects()->gamma($correction);
+
+        return $this;
+    }
+
+    /**
+     * @param float $sigma
+     * @return $this
+     */
+    public function blur($sigma)
+    {
+        $this->getImg()->effects()->blur($sigma);
 
         return $this;
     }

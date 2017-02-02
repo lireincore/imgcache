@@ -21,15 +21,22 @@ class Rotate implements IEffect
     private $_bgcolor;
 
     /**
+     * @var int
+     */
+    private $_bgtransparency;
+
+    /**
      * Rotate constructor.
      *
      * @param float $angle in degrees
-     * @param string $bgcolor for example: #fff or rgb(255,255,255) or rgba(255,255,255,0.5) transparent
+     * @param string $bgcolor for example: #fff or #ffffff or rgb(255,255,255) //todo!!!! rgb формат не понимает
+     * @param int $bgtransparency for example: 0
      */
-    public function __construct($angle, $bgcolor = 'transparent')
+    public function __construct($angle, $bgcolor = '#fff', $bgtransparency = 0)
     {
         $this->_angle = $angle;
         $this->_bgcolor = $bgcolor;
+        $this->_bgtransparency = $bgtransparency;
     }
 
     /**
@@ -37,7 +44,7 @@ class Rotate implements IEffect
      */
     public function apply(Image $img)
     {
-        //TODO
+        $img->rotate($this->_angle, $this->_bgcolor, $this->_bgtransparency);
         
         return $this;
     }

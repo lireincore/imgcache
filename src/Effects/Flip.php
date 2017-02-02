@@ -30,7 +30,14 @@ class Flip implements IEffect
      */
     public function apply(Image $img)
     {
-        //TODO
+        if ($this->_mode === 'vertical') {
+            $img->flipVertically();
+        } elseif ($this->_mode === 'horizontal') {
+            $img->flipHorizontally();
+        } elseif ($this->_mode === 'full') {
+            $img->flipHorizontally();
+            $img->flipVertically();
+        }
         
         return $this;
     }

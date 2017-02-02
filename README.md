@@ -153,7 +153,7 @@ $imgcache = new ImgCache($config);
 $thumbPath = $imgcache->path('avatar', 'user/image1.jpg');
 //$thumbPath: '/path/to/my/project/www/thumbs/presets/avatar/user/image1.jpg'
 //if the source image is not found
-//$thumbPath: '/path/to/my/project/www/thumbs/presets/avatar/user/image1.jpg'
+//$thumbPath: '/path/to/my/project/www/thumbs/plugs/avatar/user/empty.jpg'
 
 //get thumb relative url for image '/path/to/my/project/uploads/blog/image2.jpg' (preset 'content')
 $thumbRelUrl = $imgcache->url('content', 'blog/image2.jpg');
