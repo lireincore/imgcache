@@ -226,6 +226,34 @@ class Image
     }
 
     /**
+     * @param IEffect $effect
+     * @return $this
+     */
+    public function apply(IEffect $effect)
+    {
+        $effect->apply($this);
+
+        return $this;
+    }
+
+    /**
+     * @param string $destPath
+     * @param array $options
+     * @return $this
+     * @throws \RuntimeException
+     */
+    public function save($destPath, $options = [])
+    {
+        $destPathInfo = pathinfo($destPath);
+        if (!is_dir($destPathInfo['dirname'])) {
+            $this->rmkdir($destPathInfo['dirname'], 0775);
+        }
+        $this->_img->save($destPath, $options);
+
+        return $this;
+    }
+
+    /**
      * @param Image $img
      * @param int $offsetX
      * @param int $offsetY
@@ -346,37 +374,6 @@ class Image
     public function blur($sigma)
     {
         $this->getImg()->effects()->blur($sigma);
-
-        return $this;
-    }
-
-    /**
-     * @param IEffect $effect
-     * @return $this
-     */
-    public function apply(IEffect $effect)
-    {
-        $effect->apply($this);
-
-        return $this;
-    }
-
-    /**
-     * @param string $destPath
-     * @return $this
-     * @throws \RuntimeException
-     */
-    public function save($destPath)
-    {
-        $destPathInfo = pathinfo($destPath);
-        if (!is_dir($destPathInfo['dirname'])) {
-            $this->rmkdir($destPathInfo['dirname'], 0775);
-        }
-        $this->_img->save($destPath);
-
-        /*if ($result) {
-            chmod($dest_file, 0664);
-        }*/
 
         return $this;
     }
