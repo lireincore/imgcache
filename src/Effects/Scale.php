@@ -4,7 +4,7 @@ namespace LireinCore\ImgCache\Effects;
 
 use LireinCore\ImgCache\IEffect;
 use LireinCore\ImgCache\TPixel;
-use LireinCore\ImgCache\Image;
+use LireinCore\ImgCache\IImage;
 
 /**
  * Scale image
@@ -53,7 +53,7 @@ class Scale implements IEffect
     /**
      * @inheritdoc
      */
-    public function apply(Image $img)
+    public function apply(IImage $img)
     {
 
         if ($this->_width != 'auto' || $this->_height != 'auto') {
@@ -72,13 +72,13 @@ class Scale implements IEffect
 
     /**
      * Масштабирует изображение так, чтобы ни одна из сторон не была больше указанных значений
-     * @param Image $img
+     * @param IImage $img
      * @param string $width for example: 100 | auto
      * @param string $height for example: 100 | auto
      * @param bool|false $allow_increase увеличивать изображение до максимального, если оно меньше
      * @return $this
      */
-    private function scaleUp(Image $img, $width, $height, $allow_increase = false)
+    private function scaleUp(IImage $img, $width, $height, $allow_increase = false)
     {
         $origWidth = $img->getWidth();
         $origHeight = $img->getHeight();
@@ -111,13 +111,13 @@ class Scale implements IEffect
 
     /**
      * Масштабирует изображение так, чтобы ни одна из сторон не была меньше указанных значений
-     * @param Image $img
+     * @param IImage $img
      * @param string $width for example: 100 | auto
      * @param string $height for example: 100 | auto
      * @param bool|false $allow_decrease уменьшать изображение до минимального, если оно больше
      * @return $this
      */
-    private function scaleDown(Image $img, $width, $height, $allow_decrease = false)
+    private function scaleDown(IImage $img, $width, $height, $allow_decrease = false)
     {
         $origWidth = $img->getWidth();
         $origHeight = $img->getHeight();

@@ -15,7 +15,7 @@ Add the `lireincore/imgcache` package to your `require` section in the `composer
 or
 
 ``` bash
-$ composer require lireincore/imgcache
+$ composer require lireincore/imgcache dev-master
 ```
 
 ## Usage
@@ -54,11 +54,14 @@ $config = [
         //absolute path to plug
         'path' => '/path/to/my/project/assets/plug.png',
         //apply preset effects? (default: true)
-        'effects' => true
+        'effects' => true,
     ],
+    //define image class for all presets (which implements \LireinCore\ImgCache\IImage)
+    'image' => '\Foo\Bar\MyImageClass',
     //register custom effects
+    //(default effects: crop, resize, scale, rotate, overlay, flip, fit, blur, gamma, grayscale, negative)
     'effects' => [
-        //effect name => class (which implements \LireinCore\ImgCache\IEffect)
+        //effect name => class (which implements \LireinCore\ImgCache\IEffect) (default: \LireinCore\ImgCache\Image)
         'myeffect' => '\Foo\Bar\MyEffect'
     ],
     //presets list
@@ -72,7 +75,7 @@ $config = [
                     'type' => 'overlay',
                     //effect params
                     'params' => [
-                        'watermark' => '/path/to/my/project/assets/watermark.png',
+                        'path' => '/path/to/my/project/assets/watermark.png',
                         'opacity' => 80,
                         'offset_x' => 'right',
                         'offset_y' => 'bottom',
@@ -104,6 +107,8 @@ $config = [
                 'path' => '/path/to/my/project/backend/assets/plug_origin.png',
                 'effects' => false
             ],
+            //define image class for preset 'origin' (which implements \LireinCore\ImgCache\IImage)
+            'image' => '\Foo\Bar\MyOriginImage',
         ],
         //preset 'content_preview'
         'content_preview' => [
@@ -147,7 +152,11 @@ $config = [
             'convert' => [
                 'xbm' => 'png', //xbm to png
                 'gif' => 'jpeg'
-            ]
+            ],
+            'plug' => [
+                //url to get the plug from a third-party service (works only for function url())
+                'url' => 'http://placehold.it/100x100'
+            ],
         ],
         //preset 'test'
         'test' => [

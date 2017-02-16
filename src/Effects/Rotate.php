@@ -3,7 +3,7 @@
 namespace LireinCore\ImgCache\Effects;
 
 use LireinCore\ImgCache\IEffect;
-use LireinCore\ImgCache\Image;
+use LireinCore\ImgCache\IImage;
 
 /**
  * Rotate image
@@ -42,7 +42,7 @@ class Rotate implements IEffect
     /**
      * @inheritdoc
      */
-    public function apply(Image $img)
+    public function apply(IImage $img)
     {
         $img->rotate($this->_angle, $this->_bgcolor, $this->_bgtransparency);
         

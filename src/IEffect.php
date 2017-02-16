@@ -5,8 +5,9 @@ namespace LireinCore\ImgCache;
 interface IEffect
 {
     /**
-     * @param Image $img
+     * @param IImage $img
+     *
      * @return $this
      */
-    public function apply(Image $img);
+    public function apply(IImage $img);
 }

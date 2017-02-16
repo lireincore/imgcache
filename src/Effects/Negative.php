@@ -3,7 +3,7 @@
 namespace LireinCore\ImgCache\Effects;
 
 use LireinCore\ImgCache\IEffect;
-use LireinCore\ImgCache\Image;
+use LireinCore\ImgCache\IImage;
 
 /**
  * Image negative
@@ -13,7 +13,7 @@ class Negative implements IEffect
     /**
      * @inheritdoc
      */
-    public function apply(Image $img)
+    public function apply(IImage $img)
     {
         $img->negative();
         

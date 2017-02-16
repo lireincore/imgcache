@@ -4,7 +4,7 @@ namespace LireinCore\ImgCache\Effects;
 
 use LireinCore\ImgCache\IEffect;
 use LireinCore\ImgCache\TPixel;
-use LireinCore\ImgCache\Image;
+use LireinCore\ImgCache\IImage;
 
 /**
  * Resize image
@@ -45,7 +45,7 @@ class Resize implements IEffect
     /**
      * @inheritdoc
      */
-    public function apply(Image $img)
+    public function apply(IImage $img)
     {
         $origWidth = $img->getWidth();
         $origHeight = $img->getHeight();

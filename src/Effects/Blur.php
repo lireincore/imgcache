@@ -3,7 +3,7 @@
 namespace LireinCore\ImgCache\Effects;
 
 use LireinCore\ImgCache\IEffect;
-use LireinCore\ImgCache\Image;
+use LireinCore\ImgCache\IImage;
 
 /**
  * Image gaussian blur
@@ -28,7 +28,7 @@ class Blur implements IEffect
     /**
      * @inheritdoc
      */
-    public function apply(Image $img)
+    public function apply(IImage $img)
     {
         $img->blur($this->_sigma);
 

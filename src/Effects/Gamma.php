@@ -3,7 +3,7 @@
 namespace LireinCore\ImgCache\Effects;
 
 use LireinCore\ImgCache\IEffect;
-use LireinCore\ImgCache\Image;
+use LireinCore\ImgCache\IImage;
 
 /**
  * Image gamma correction
@@ -28,7 +28,7 @@ class Gamma implements IEffect
     /**
      * @inheritdoc
      */
-    public function apply(Image $img)
+    public function apply(IImage $img)
     {
         $img->gamma($this->_correction);
 

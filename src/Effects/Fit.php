@@ -4,7 +4,7 @@ namespace LireinCore\ImgCache\Effects;
 
 use LireinCore\ImgCache\IEffect;
 use LireinCore\ImgCache\TPixel;
-use LireinCore\ImgCache\Image;
+use LireinCore\ImgCache\IImage;
 
 /**
  * Fit image in box
@@ -73,7 +73,7 @@ class Fit implements IEffect
     /**
      * @inheritdoc
      */
-    public function apply(Image $img)
+    public function apply(IImage $img)
     {
         $origWidth = $img->getWidth();
         $origHeight = $img->getHeight();
@@ -81,7 +81,7 @@ class Fit implements IEffect
         $height = $this->getPxSize($this->_height, $origHeight);
 
         if ($origWidth != $width && $origHeight != $height) {
-            $oldImage = clone $img; //todo!!!! в imagine есть своя операция клонирования
+            $oldImage = $img->copy();
             $oldImage->apply(new Scale($width, $height, 'up', $this->_allow_increase));
             $img->create($width, $height, $this->_bgcolor, $this->_bgtransparency);
 

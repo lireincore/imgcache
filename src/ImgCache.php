@@ -2,13 +2,6 @@
 
 namespace LireinCore\ImgCache;
 
-//todo: absolute $fileRelPath path in windows (C: problem)
-//todo: thumbs long path problem
-//todo: formats - bmp (gd, php>7.2), webp (gd, php > 5.5), for imagick and gmagick ico, tiff, svg?
-//todo: Image interface
-//todo: exceptions
-//todo: effects docs
-
 class ImgCache
 {
     /**
@@ -112,9 +105,9 @@ class ImgCache
     public function registerEffect($name, $class)
     {
         if (class_exists($class)) {
-            $parents = class_parents($class);
-            if (in_array('LireinCore\ImgCache\Effect', $parents)) {
-                $this->_effects = array_merge($this->_effects, [$name => $class]);
+            $interfaces = class_implements($class);
+            if (in_array('LireinCore\ImgCache\IEffect', $interfaces)) {
+                $this->_effects[$name] = $class;
             }
         }
     }
@@ -137,17 +130,71 @@ class ImgCache
 
     /**
      * @param string $presetName
-     * @param string|null fileRelPath
+     * @param string|null $fileRelPath
+     * @param bool $usePlug
      * @return bool|string
      */
-    public function path($presetName, $fileRelPath = null)
+    public function path($presetName, $fileRelPath = null, $usePlug = true)
     {
         if (!isset($this->_presets[$presetName])) return false;
+        $path = $fileRelPath === null ? false : $path = $this->getThumbPath($presetName, $fileRelPath);
 
-        if ($fileRelPath === null) {
-            return $this->getPlugPath($presetName);
+        if (!$path && $usePlug) {
+            $path = $this->getPlugPath($presetName);
         }
 
+        return $path;
+    }
+
+    /**
+     * @param string|null $presetName
+     * @param string|null $fileRelPath
+     * @param bool $absolute
+     * @param bool $usePlug
+     * @return bool|string
+     */
+    public function url($presetName = null, $fileRelPath = null, $absolute = false, $usePlug = true)
+    {
+        if ($presetName === null) {
+            $options = $this->getOptions();
+            if ($options['plugUrl']) return $options['plugUrl'];
+            else return false;
+        } elseif (!isset($this->_presets[$presetName])) return false;
+
+        $preset = $this->_presets[$presetName];
+        $presetOptions = $this->getPresetOptions($presetName);
+
+        $path = $fileRelPath === null ? false : $path = $this->getThumbPath($presetName, $fileRelPath);
+        if ($path) {
+            $url = $this->getUrl($presetName, $path, $absolute);
+            if ($url) return $url;
+        }
+
+        if ($usePlug) {
+            if (!empty($preset['plug']['path']) || empty($preset['plug']['url'])) {
+                $path = $this->getPlugPath($presetName);
+                if ($path) {
+                    $url = $this->getUrl($presetName, $path, $absolute);
+                    if ($url) return $url;
+                }
+            }
+
+            if ($presetOptions['plugUrl']) {
+                return $presetOptions['plugUrl'];
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param string $presetName
+     * @param string $fileRelPath
+     * @return bool|string
+     */
+    private function getThumbPath($presetName, $fileRelPath)
+    {
+        $state = true;
         $presetOptions = $this->getPresetOptions($presetName);
         $fileRelPath = ltrim($fileRelPath, "\\/");
         $thumbOptions = $this->getThumbOptions($fileRelPath, $presetName);
@@ -158,13 +205,9 @@ class ImgCache
             if ($state = is_file($srcFullPath)) {
                 $state = $this->createThumb($presetName, $srcFullPath, $destFullPath, $thumbOptions);
             }
-
-            if (!$state) {
-                return $this->getPlugPath($presetName);
-            }
         }
 
-        return $destFullPath;
+        return $state ? $destFullPath : false;
     }
 
     /**
@@ -192,23 +235,23 @@ class ImgCache
 
     /**
      * @param string $presetName
-     * @param string|null $fileRelPath
+     * @param string $path
      * @param bool $absolute
      * @return bool|string
      */
-    public function url($presetName, $fileRelPath = null, $absolute = false)
+    private function getUrl($presetName, $path, $absolute = false)
     {
-        if ($path = $this->path($presetName, $fileRelPath)) {
-            $realpath = realpath($path);
-            $presetOptions = $this->getPresetOptions($presetName);
-            if (false !== strpos($realpath, $presetOptions['realWebDir'])) {
-                $url = str_replace('\\', '/', substr($realpath, strlen($presetOptions['realWebDir'])));
+        $presetOptions = $this->getPresetOptions($presetName);
+        $realPath = realpath($path);
+        $isWebPath = false === strpos($realPath, $presetOptions['realWebDir']) ? false : true;
 
-                return $absolute ? $presetOptions['baseurl'] . $url : $url;
-            }
-            else return false;
+        if ($isWebPath) {
+            $url = str_replace('\\', '/', substr($realPath, strlen($presetOptions['realWebDir'])));
+
+            return $absolute ? $presetOptions['baseurl'] . $url : $url;
         }
-        else return false;
+
+        return false;
     }
 
     /**
@@ -284,10 +327,10 @@ class ImgCache
         $driverCode = null;
 
         switch ($driver) {
-            case 'gmagick': $driverCode = Image::DRIVER_GM; break;
-            case 'imagick': $driverCode = Image::DRIVER_IM; break;
-            case 'gd': $driverCode = Image::DRIVER_GD; break;
-            default: $driverCode = Image::DRIVER_DEFAULT;
+            case 'gmagick': $driverCode = IImage::DRIVER_GM; break;
+            case 'imagick': $driverCode = IImage::DRIVER_IM; break;
+            case 'gd': $driverCode = IImage::DRIVER_GD; break;
+            default: $driverCode = IImage::DRIVER_DEFAULT;
         }
 
         return $driverCode;
@@ -310,18 +353,28 @@ class ImgCache
                 '*' => 'png',
             ];
 
+            $imageClass = '\LireinCore\ImgCache\Image';
+            if (!empty($config['image']) && class_exists($config['image'])) {
+                $interfaces = class_implements($config['image']);
+                if (in_array('LireinCore\ImgCache\IImage', $interfaces)) {
+                    $imageClass = $config['image'];
+                }
+            }
+
             $this->_options = [
-                'driverCode' => !empty($config['driver']) ? $this->getDriverCode($config['driver']) : Image::DRIVER_DEFAULT,
+                'driverCode' => !empty($config['driver']) ? $this->getDriverCode($config['driver']) : IImage::DRIVER_DEFAULT,
                 'srcdir' => !empty($config['srcdir']) ? rtrim($config['srcdir'], "\\/") : '',
                 'destdir' => !empty($config['destdir']) ? rtrim($config['destdir'], "\\/") : sys_get_temp_dir(),
                 'realWebDir' => !empty($config['webdir']) ? realpath($config['webdir']) : '',
                 'baseurl' => !empty($config['baseurl']) ? $config['baseurl'] : '',
                 'plugPath' => !empty($config['plug']['path']) ? $config['plug']['path'] : '',
                 'plugEffects' => isset($config['plug']['effects']) ? $config['plug']['effects'] : true,
+                'plugUrl' => !empty($config['plug']['url']) ? $config['plug']['url'] : null,
                 'convertMap' => isset($config['convert']) ? $this->getConvertMap($config['convert']) + $defaultConvertMap : $defaultConvertMap,
                 'jpeg_quality' => isset($config['jpeg_quality']) ? $config['jpeg_quality'] : 75,
                 'png_compression_level' => isset($config['png_compression_level']) ? $config['png_compression_level'] : 7,
                 'png_compression_filter' => isset($config['png_compression_filter']) ? $config['png_compression_filter'] : 5,
+                'imageClass' => $imageClass,
             ];
         }
 
@@ -345,6 +398,14 @@ class ImgCache
                 $convertMap += $options['convertMap'];
             }
 
+            $imageClass = $options['imageClass'];
+            if (!empty($preset['image']) && class_exists($preset['image'])) {
+                $interfaces = class_implements($preset['image']);
+                if (in_array('LireinCore\ImgCache\IImage', $interfaces)) {
+                    $imageClass = $preset['image'];
+                }
+            }
+
             $this->_presetsOptions[$presetName] = [
                 'driverCode' => !empty($preset['driver']) ? $this->getDriverCode($preset['driver']) : $options['driverCode'],
                 'srcdir' => !empty($preset['srcdir']) ? rtrim($preset['srcdir'], "\\/") : $options['srcdir'],
@@ -353,10 +414,12 @@ class ImgCache
                 'baseurl' => !empty($preset['baseurl']) ? $preset['baseurl'] : $options['baseurl'],
                 'plugPath' => !empty($preset['plug']['path']) ? $preset['plug']['path'] : $options['plugPath'],
                 'plugEffects' => isset($preset['plug']['effects']) ? $preset['plug']['effects'] : $options['plugEffects'],
+                'plugUrl' => !empty($preset['plug']['url']) ? $preset['plug']['url'] : $options['plugUrl'],
                 'convertMap' => $convertMap,
                 'jpeg_quality' => isset($preset['jpeg_quality']) ? $preset['jpeg_quality'] : $options['jpeg_quality'],
                 'png_compression_level' => isset($preset['png_compression_level']) ? $preset['png_compression_level'] : $options['png_compression_level'],
                 'png_compression_filter' => isset($preset['png_compression_filter']) ? $preset['png_compression_filter'] : $options['png_compression_filter'],
+                'imageClass' => $imageClass,
             ];
         }
 
@@ -430,7 +493,7 @@ class ImgCache
         $state = true;
         try {
             $presetOptions = $this->getPresetOptions($presetName);
-            $image = (new Image($presetOptions['driverCode'], false))->open($srcPath);
+            $image = (new $presetOptions['imageClass']($presetOptions['driverCode'], false))->open($srcPath);
             if (!$thumbOptions['isPlug'] || $presetOptions['plugEffects']) {
                 $this->applyPreset($image, $this->_presets[$presetName]);
             }
@@ -438,9 +501,9 @@ class ImgCache
                 'format' => $thumbOptions['format'],
                 'jpeg_quality' => $presetOptions['jpeg_quality'],
                 'png_compression_level' => $presetOptions['png_compression_level'],
-                'png_compression_filter' => $presetOptions['png_compression_filter'],
+                //'png_compression_filter' => $presetOptions['png_compression_filter'],
             ]);
-        } catch (\RuntimeException $ex) {
+        } catch (\Exception $ex) {
             $state = false;
         }
 
@@ -448,7 +511,7 @@ class ImgCache
     }
 
     /**
-     * @param Image $image
+     * @param IImage $image
      * @param array $preset
      */
     private function applyPreset($image, $preset)

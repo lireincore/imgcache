@@ -2,59 +2,28 @@
 
 namespace LireinCore\ImgCache;
 
-use Imagine\Image\ImageInterface;
 use Imagine\Image\AbstractImage;
 use Imagine\Image\AbstractImagine;
 use Imagine\Image\Point;
 use Imagine\Image\Box;
 use Imagine\Image\Palette\RGB;
 
-class Image
+class Image implements IImage
 {
-    /**
-     * default graphic driver
-     */
-    const DRIVER_DEFAULT = 1;
-
-    /**
-     * gmagick graphic driver
-     */
-    const DRIVER_GM = 2;
-
-    /**
-     * imagick graphic driver
-     */
-    const DRIVER_IM = 3;
-
-    /**
-     * gd2 graphic driver
-     */
-    const DRIVER_GD = 4;
-
     /**
      * @var AbstractImagine
      */
-    private $_imagine;
+    protected $_imagine;
     
     /**
      * @var AbstractImage
      */
-    private $_img;
+    protected $_img;
     
     /**
      * @var string
      */
-    private $_driver;
-
-    /**
-     * @var int
-     */
-    private $_width;
-
-    /**
-     * @var int
-     */
-    private $_height;
+    protected $_driver;
 
     /**
      * Image constructor.
@@ -63,21 +32,21 @@ class Image
      * @param bool $tryToUseOtherDrivers
      * @throws \RuntimeException
      */
-    public function __construct($driver = self::DRIVER_DEFAULT, $tryToUseOtherDrivers = true)
+    public function __construct($driver = IImage::DRIVER_DEFAULT, $tryToUseOtherDrivers = true)
     {
-        if ($driver == self::DRIVER_GM || $driver == self::DRIVER_DEFAULT) {
+        if ($driver == IImage::DRIVER_GM || $driver == IImage::DRIVER_DEFAULT) {
             try {
                 $this->_imagine = new \Imagine\Gmagick\Imagine();
-                $this->_driver = self::DRIVER_GM;
+                $this->_driver = IImage::DRIVER_GM;
             } catch (\RuntimeException $ex1) {
                 if ($tryToUseOtherDrivers) {
                     try {
                         $this->_imagine = new \Imagine\Imagick\Imagine();
-                        $this->_driver = self::DRIVER_IM;
+                        $this->_driver = IImage::DRIVER_IM;
                     } catch (\RuntimeException $ex2) {
                         try {
                             $this->_imagine = new \Imagine\Gd\Imagine();
-                            $this->_driver = self::DRIVER_GD;
+                            $this->_driver = IImage::DRIVER_GD;
                         } catch (\RuntimeException $ex3) {
                             throw new \RuntimeException('Graphic library not installed or higher version is required');
                         }
@@ -87,19 +56,19 @@ class Image
                 }
             }
         }
-        elseif ($driver == self::DRIVER_IM) {
+        elseif ($driver == IImage::DRIVER_IM) {
             try {
                 $this->_imagine = new \Imagine\Imagick\Imagine();
-                $this->_driver = self::DRIVER_IM;
+                $this->_driver = IImage::DRIVER_IM;
             } catch (\RuntimeException $ex1) {
                 if ($tryToUseOtherDrivers) {
                     try {
                         $this->_imagine = new \Imagine\Gmagick\Imagine();
-                        $this->_driver = self::DRIVER_GM;
+                        $this->_driver = IImage::DRIVER_GM;
                     } catch (\RuntimeException $ex2) {
                         try {
                             $this->_imagine = new \Imagine\Gd\Imagine();
-                            $this->_driver = self::DRIVER_GD;
+                            $this->_driver = IImage::DRIVER_GD;
                         } catch (\RuntimeException $ex3) {
                             throw new \RuntimeException('Graphic library not installed or higher version is required');
                         }
@@ -109,19 +78,19 @@ class Image
                 }
             }
         }
-        elseif ($driver == self::DRIVER_GD) {
+        elseif ($driver == IImage::DRIVER_GD) {
             try {
                 $this->_imagine = new \Imagine\Gd\Imagine();
-                $this->_driver = self::DRIVER_GD;
+                $this->_driver = IImage::DRIVER_GD;
             } catch (\RuntimeException $ex1) {
                 if ($tryToUseOtherDrivers) {
                     try {
                         $this->_imagine = new \Imagine\Gmagick\Imagine();
-                        $this->_driver = self::DRIVER_GM;
+                        $this->_driver = IImage::DRIVER_GM;
                     } catch (\RuntimeException $ex2) {
                         try {
                             $this->_imagine = new \Imagine\Imagick\Imagine();
-                            $this->_driver = self::DRIVER_IM;
+                            $this->_driver = IImage::DRIVER_IM;
                         } catch (\RuntimeException $ex3) {
                             throw new \RuntimeException('Graphic library not installed or higher version is required');
                         }
@@ -136,58 +105,43 @@ class Image
         }
     }
 
+    /**
+     * @param int $driver
+     * @param bool $tryToUseOtherDrivers
+     *
+     * @return IImage
+     */
+    public static function newInstance($driver = IImage::DRIVER_DEFAULT, $tryToUseOtherDrivers = true)
+    {
+        return new static($driver, $tryToUseOtherDrivers);
+    }
+
+    /**
+     * @return int
+     */
     public function getDriver()
     {
         return $this->_driver;
     }
 
     /**
-     * @return null|\Imagick|\Gmagick|resource
+     * @return int
      */
-    public function getDriverResObject()
-    {
-        $object = null;
-        $driver = $this->getDriver();
-
-        if ($driver == static::DRIVER_GM) {
-            $object = $this->getImg()->getGmagick();
-        } elseif ($driver == static::DRIVER_IM) {
-            $object = $this->getImg()->getImagick();
-        } elseif ($driver == static::DRIVER_GD) {
-            $object = $this->getImg()->getGdResource();
-        }
-
-        return $object;
-    }
-
-    public function getImagine()
-    {
-        return $this->_imagine;
-    }
-
-    public function getImg()
-    {
-        return $this->_img;
-    }
-
     public function getWidth()
     {
-        return $this->_width;
+        $size = $this->_img->getSize();
+
+        return $size->getWidth();
     }
 
+    /**
+     * @return int
+     */
     public function getHeight()
     {
-        return $this->_height;
-    }
+        $size = $this->_img->getSize();
 
-    public function setWidth($width)
-    {
-        $this->_width = $width;
-    }
-
-    public function setHeight($height)
-    {
-        return $this->_height = $height;
+        return $size->getHeight();
     }
 
     /**
@@ -198,9 +152,6 @@ class Image
     public function open($filepath)
     {
         $this->_img = $this->_imagine->open($filepath);
-        $size = $this->_img->getSize();
-        $this->_width = $size->getWidth();
-        $this->_height = $size->getHeight();
 
         return $this;
     }
@@ -216,13 +167,25 @@ class Image
     {
         $size = new Box($width, $height);
         $palette = new RGB();
-        $color = $palette->color($color, $transparency);
+        if ($this->_driver == IImage::DRIVER_GM) {
+            $color = $palette->color($color);
+        } else {
+            $color = $palette->color($color, $transparency);
+        }
         $this->_img = $this->_imagine->create($size, $color);
-        $size = $this->_img->getSize();
-        $this->_width = $size->getWidth();
-        $this->_height = $size->getHeight();
 
         return $this;
+    }
+
+    /**
+     * @return IImage
+     */
+    public function copy()
+    {
+        $image = new static($this->_driver, false);
+        $image->_img = $this->_img->copy();
+
+        return $image;
     }
 
     /**
@@ -232,6 +195,161 @@ class Image
     public function apply(IEffect $effect)
     {
         $effect->apply($this);
+
+        return $this;
+    }
+
+    /**
+     * @param IImage $img
+     * @param int $offsetX
+     * @param int $offsetY
+     * @param int $opacity
+     * @return $this
+     */
+    public function paste(IImage $img, $offsetX, $offsetY, $opacity = 100)
+    {
+        if (!$img instanceof static) {
+            throw new \InvalidArgumentException(sprintf('LireinCore\ImgCache\Image can only paste() LireinCore\ImgCache\Image instances, %s given', get_class($img)));
+        }
+
+        if ($opacity != 100) {
+            $img_res = $img->getDriverResObject();
+            if ($this->_driver == IImage::DRIVER_GM) {
+                //todo!!!!
+            } elseif ($this->_driver == IImage::DRIVER_IM) {
+                //todo!!!!
+                $img_res->setImageOpacity($opacity / 100);
+                //$img_res->evaluateImage($img_res::EVALUATE_MULTIPLY, 0.0, $img_res::CHANNEL_ALPHA);
+            } elseif ($this->_driver == IImage::DRIVER_GD) {
+                $img_width = $img->getWidth();
+                $img_height = $img->getHeight();
+                $res = $this->getDriverResObject();
+
+                $cut = imagecreatetruecolor($img_width, $img_height);
+                imagecopy($cut, $res, 0, 0, $offsetX, $offsetY, $img_width, $img_height);
+                imagecopy($cut, $img_res, 0, 0, 0, 0, $img_width, $img_height);
+                imagecopymerge($res, $cut, $offsetX, $offsetY, 0, 0, $img_width, $img_height, $opacity);
+                imagedestroy($cut);
+            }
+        }
+
+        if ($opacity == 100 || $this->_driver == IImage::DRIVER_GM || $this->_driver == IImage::DRIVER_IM) {
+            //$img->paste($img, $offsetX, $offsetY, $opacity);
+
+            $this->_img->paste($img->_img, new Point($offsetX, $offsetY));
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param int $width
+     * @param int $height
+     * @param string $filter
+     * @return $this
+     */
+    public function resize($width, $height, $filter = IImage::FILTER_UNDEFINED)
+    {
+        if ($this->getWidth() != $width || $this->getHeight() != $height) {
+            $this->_img->resize(new Box($width, $height), $filter);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param int $offsetX
+     * @param int $offsetY
+     * @param int $width
+     * @param int $height
+     * @return $this
+     */
+    public function crop($offsetX, $offsetY, $width, $height)
+    {
+        if ($offsetX != 0 || $offsetY != 0 || $this->getWidth() != $width || $this->getHeight() != $height) {
+            $this->_img->crop(new Point($offsetX, $offsetY), new Box($width, $height));
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function flipHorizontally()
+    {
+        $this->_img->flipHorizontally();
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function flipVertically()
+    {
+        $this->_img->flipVertically();
+
+        return $this;
+    }
+
+    /**
+     * @param float $angle
+     * @param string $bgcolor
+     * @param int $bgtransparency
+     * @return $this
+     */
+    public function rotate($angle, $bgcolor = '#fff', $bgtransparency = 0)
+    {
+        $palette = new RGB();
+        if ($this->_driver == IImage::DRIVER_GM) {
+            $color = $palette->color($bgcolor);
+        } else {
+            $color = $palette->color($bgcolor, $bgtransparency);
+        }
+        $this->_img->rotate($angle, $color);
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function negative()
+    {
+        $this->_img->effects()->negative();
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function grayscale()
+    {
+        $this->_img->effects()->grayscale();
+
+        return $this;
+    }
+
+    /**
+     * @param float $correction
+     * @return $this
+     */
+    public function gamma($correction)
+    {
+        $this->_img->effects()->gamma($correction);
+
+        return $this;
+    }
+
+    /**
+     * @param float $sigma
+     * @return $this
+     */
+    public function blur($sigma)
+    {
+        $this->_img->effects()->blur($sigma);
 
         return $this;
     }
@@ -254,128 +372,21 @@ class Image
     }
 
     /**
-     * @param Image $img
-     * @param int $offsetX
-     * @param int $offsetY
-     * @return $this
+     * @return null|\Imagick|\Gmagick|resource
      */
-    public function paste(Image $img, $offsetX, $offsetY)
+    protected function getDriverResObject()
     {
-        $this->getImg()->paste($img->getImg(), new Point($offsetX, $offsetY));
+        $object = null;
 
-        return $this;
-    }
-
-    /**
-     * @param int $width
-     * @param int $height
-     * @param string $filter
-     * @return $this
-     */
-    public function resize($width, $height, $filter = ImageInterface::FILTER_UNDEFINED)
-    {
-        if ($this->getWidth() != $width || $this->getHeight() != $height) {
-            $this->getImg()->resize(new Box($width, $height), $filter);
-            $this->setWidth($width);
-            $this->setHeight($height);
+        if ($this->_driver == static::DRIVER_GM) {
+            $object = $this->_img->getGmagick();
+        } elseif ($this->_driver == static::DRIVER_IM) {
+            $object = $this->_img->getImagick();
+        } elseif ($this->_driver == static::DRIVER_GD) {
+            $object = $this->_img->getGdResource();
         }
 
-        return $this;
-    }
-
-    /**
-     * @param int $offsetX
-     * @param int $offsetY
-     * @param int $width
-     * @param int $height
-     * @return $this
-     */
-    public function crop($offsetX, $offsetY, $width, $height)
-    {
-        if ($offsetX != 0 || $offsetY != 0 || $this->getWidth() != $width || $this->getHeight() != $height) {
-            $this->getImg()->crop(new Point($offsetX, $offsetY), new Box($width, $height));
-            $this->setWidth($width);
-            $this->setHeight($height);
-        }
-
-        return $this;
-    }
-
-    /**
-     * @return $this
-     */
-    public function flipHorizontally()
-    {
-        $this->getImg()->flipHorizontally();
-
-        return $this;
-    }
-
-    /**
-     * @return $this
-     */
-    public function flipVertically()
-    {
-        $this->getImg()->flipVertically();
-
-        return $this;
-    }
-
-    /**
-     * @param float $angle
-     * @param string $bgcolor
-     * @param int $bgtransparency
-     * @return $this
-     */
-    public function rotate($angle, $bgcolor = '#fff', $bgtransparency = 0)
-    {
-        $palette = new RGB();
-        $color = $palette->color($bgcolor, $bgtransparency);
-        $this->getImg()->rotate($angle, $color);
-
-        return $this;
-    }
-
-    /**
-     * @return $this
-     */
-    public function negative()
-    {
-        $this->getImg()->effects()->negative();
-
-        return $this;
-    }
-
-    /**
-     * @return $this
-     */
-    public function grayscale()
-    {
-        $this->getImg()->effects()->grayscale();
-
-        return $this;
-    }
-
-    /**
-     * @param float $correction
-     * @return $this
-     */
-    public function gamma($correction)
-    {
-        $this->getImg()->effects()->gamma($correction);
-
-        return $this;
-    }
-
-    /**
-     * @param float $sigma
-     * @return $this
-     */
-    public function blur($sigma)
-    {
-        $this->getImg()->effects()->blur($sigma);
-
-        return $this;
+        return $object;
     }
 
     /**
