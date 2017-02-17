@@ -64,6 +64,7 @@ $config = [
     'plug' => [
         //absolute path to plug
         'path' => '/path/to/my/project/assets/plug.png',
+        
         //apply preset effects? (default: true)
         'effects' => true,
     ],
@@ -101,6 +102,7 @@ $config = [
             ],
             
             //you can override some of the options for this preset
+            
             //graphic library for preset 'origin'
             'driver' => 'gd',
             
@@ -135,6 +137,7 @@ $config = [
             //define custom image class for preset 'origin' (which implements \LireinCore\ImgCache\IImage)
             'image' => '\Foo\Bar\MyOriginImage',
         ],
+        
         //preset 'content_preview'
         'content_preview' => [
             'effects' => [
@@ -183,6 +186,7 @@ $config = [
                 'url' => 'http://placehold.it/100x100'
             ],
         ],
+        
         //preset 'test'
         'test' => [
             'effects' => [
@@ -203,6 +207,7 @@ $config = [
                 ]
             ],
         ],
+        
         //preset 'test2'
         'test2' => [
             'effects' => [
