@@ -28,21 +28,29 @@ use LireinCore\ImgCache\ImgCache;
 $config = [
     //graphic library for all presets: gmagick, imagick, gd (default: gmagick->imagick->gd)
     'driver' => 'gmagick',
+    
     //original images source directory for all presets
     'srcdir' => '/path/to/my/project/uploads',
+    
     //thumbs destination directory for all presets
     //(to access the thumbs from the web they should be in a directory accessible from the web)
     'destdir' => '/path/to/my/project/www/thumbs',
+    
     //web directory for all presets
     'webdir' => '/path/to/my/project/www',
+    
     //base url for all presets
     'baseurl' => 'https://www.mysite.com',
+    
     //quality of save jpeg images for all presets: 0-100 (default: 75)
     'jpeg_quality' => 80,
+    
     //compression level of save png images for all presets: 0-9 (default: 7)
     'png_compression_level' => 8,
+    
     //compression filter of save png images for all presets: 0-9 (default: 5)
     'png_compression_filter' => 6,
+    
     //formats convert map for all presets
     //supported formats for destination images: jpeg, png, gif, wbmp, xbm
     //(default: ['jpeg' => 'jpeg', 'png' => 'png', 'gif' => 'gif', 'wbmp' => 'wbmp', 'xbm' => 'xbm', '*' => 'png'])
@@ -51,6 +59,7 @@ $config = [
         'gif,wbmp' => 'png', //gif and wbmp to png
         '*' => 'jpeg' //all others to jpeg
     ],
+    
     //plug for all presets
     'plug' => [
         //absolute path to plug
@@ -58,14 +67,18 @@ $config = [
         //apply preset effects? (default: true)
         'effects' => true,
     ],
+    
     //define custom image class for all presets (which implements \LireinCore\ImgCache\IImage)
+    //(default: \LireinCore\ImgCache\Image)
     'image' => '\Foo\Bar\MyImageClass',
+    
     //register custom effects
     //(default effects: crop, resize, scale, rotate, overlay, flip, fit, blur, gamma, grayscale, negative)
     'effects' => [
-        //effect name => class (which implements \LireinCore\ImgCache\IEffect) (default: \LireinCore\ImgCache\Image)
+        //effect name => class (which implements \LireinCore\ImgCache\IEffect)
         'myeffect' => '\Foo\Bar\MyEffect'
     ],
+    
     //presets list
     'presets' => [
         //preset 'origin'
@@ -86,29 +99,39 @@ $config = [
                     ]
                 ],
             ],
+            
             //you can override some of the options for this preset
             //graphic library for preset 'origin'
             'driver' => 'gd',
+            
             //original images source directory for preset 'origin'
             'srcdir' => '/path/to/my/project/backend/uploads',
+            
             //thumbs destination directory for preset 'origin'
             //(to access the thumbs from the web they should be in a directory accessible from the web)
             'destdir' => '/path/to/my/project/backend/www/thumbs',
+            
             //web directory for preset 'origin'
             'webdir' => '/path/to/my/project/backend/www',
+            
             //base url for preset 'origin'
             'baseurl' => 'https://admin.mysite.com',
+            
             //quality of save jpeg images for preset 'origin'
             'jpeg_quality' => 100,
+            
             //compression level of save png images for preset 'origin'
             'png_compression_level' => 9,
+            
             //compression filter of save png images for preset 'origin'
             'png_compression_filter' => 9,
+            
             //plug for preset 'origin'
             'plug' => [
                 'path' => '/path/to/my/project/backend/assets/plug_origin.png',
                 'effects' => false
             ],
+            
             //define custom image class for preset 'origin' (which implements \LireinCore\ImgCache\IImage)
             'image' => '\Foo\Bar\MyOriginImage',
         ],
@@ -245,7 +268,6 @@ $imgcache->clearPresetThumbs('presetName');
 
 ```php
 //Use basic effects
-
 use LireinCore\ImgCache\Image;
 
 $image = (new Image())
@@ -256,7 +278,6 @@ $image = (new Image())
     ->save('/path/to/new_image.png', ['format' => 'png', 'png_compression_level' => 7]);
 
 //Also you can add extended effects
-
 use LireinCore\ImgCache\Image;
 use LireinCore\ImgCache\Effects\Overlay;
 use LireinCore\ImgCache\Effects\Scale;
