@@ -20,6 +20,8 @@ $ composer require lireincore/imgcache dev-master
 
 ## Usage
 
+### ImgCache
+
 ```php
 use LireinCore\ImgCache\ImgCache;
 
@@ -56,7 +58,7 @@ $config = [
         //apply preset effects? (default: true)
         'effects' => true,
     ],
-    //define image class for all presets (which implements \LireinCore\ImgCache\IImage)
+    //define custom image class for all presets (which implements \LireinCore\ImgCache\IImage)
     'image' => '\Foo\Bar\MyImageClass',
     //register custom effects
     //(default effects: crop, resize, scale, rotate, overlay, flip, fit, blur, gamma, grayscale, negative)
@@ -107,7 +109,7 @@ $config = [
                 'path' => '/path/to/my/project/backend/assets/plug_origin.png',
                 'effects' => false
             ],
-            //define image class for preset 'origin' (which implements \LireinCore\ImgCache\IImage)
+            //define custom image class for preset 'origin' (which implements \LireinCore\ImgCache\IImage)
             'image' => '\Foo\Bar\MyOriginImage',
         ],
         //preset 'content_preview'
@@ -225,6 +227,48 @@ $thumbRelUrl = $imgcache->url('content_preview', 'blog/image.jpg');
 //get thumb absolute url for image '/path/to/my/project/uploads/news/image.jpg' (preset 'test')
 $thumbAbsUrl = $imgcache->url('test', 'news/image.jpg', true);
 //$thumbAbsUrl: 'https://www.mysite.com/thumbs/presets/test/news/image.jpg'
+
+//register custom effect
+$imgcache->registerEffect('effectName', '\My\Effects\EffectClass');
+
+//unregister effect
+$imgcache->unregisterEffect('effectName');
+
+//clear all file thumbs (path should be specified as path() and url())
+$imgcache->clearFileThumbs('/path/to/file');
+
+//clear all preset thumbs
+$imgcache->clearPresetThumbs('presetName');
+```
+
+### Image
+
+```php
+//Use basic effects
+
+use LireinCore\ImgCache\Image;
+
+$image = (new Image())
+    ->open('/path/to/image.jpg')
+    ->resize(1000, 500)
+    ->grayscale()
+    ->blur(2)
+    ->save('/path/to/new_image.png', ['format' => 'png', 'png_compression_level' => 7]);
+
+//Also you can add extended effects
+
+use LireinCore\ImgCache\Image;
+use LireinCore\ImgCache\Effects\Overlay;
+use LireinCore\ImgCache\Effects\Scale;
+use LireinCore\ImgCache\Effects\Fit;
+
+$image = (new Image(IImage::DRIVER_GD))
+    ->open('/path/to/image.jpg')
+    ->apply(new Overlay('/path/to/watermark.png', 70, 'right', 'bottom', '50%', '50%'))
+    ->grayscale()
+    ->apply(new Scale('50%', '50%', 'up', true))
+    ->apply(new Fit('center', 'center', '200', '90', '#f00', 20, true))
+    ->save('/path/to/new_image.jpg');
 ```
 
 ## License

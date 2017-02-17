@@ -3,6 +3,7 @@
 namespace LireinCore\ImgCache\Effects;
 
 use LireinCore\ImgCache\IEffect;
+use LireinCore\ImgCache\TPixel;
 use LireinCore\ImgCache\IImage;
 
 /**
@@ -10,6 +11,8 @@ use LireinCore\ImgCache\IImage;
  */
 class Rotate implements IEffect
 {
+    use TPixel;
+
     /**
      * @var float
      */
@@ -29,7 +32,7 @@ class Rotate implements IEffect
      * Rotate constructor.
      *
      * @param float $angle in degrees
-     * @param string $bgcolor for example: #fff or #ffffff or rgb(255,255,255) //todo!!!! rgb формат не понимает
+     * @param string $bgcolor for example: '#fff' or '#ffffff' - hex | '50,50,50' - rgb | '50,50,50,50' - cmyk
      * @param int $bgtransparency for example: 0
      */
     public function __construct($angle, $bgcolor = '#fff', $bgtransparency = 0)
@@ -44,7 +47,8 @@ class Rotate implements IEffect
      */
     public function apply(IImage $img)
     {
-        $img->rotate($this->_angle, $this->_bgcolor, $this->_bgtransparency);
+        $bgcolor = $this->parseColor($this->_bgcolor);
+        $img->rotate($this->_angle, $bgcolor, $this->_bgtransparency);
         
         return $this;
     }

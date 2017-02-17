@@ -55,7 +55,7 @@ class Fit implements IEffect
      * @param string $offset_y for example: 100px | 20% | center | top | bottom
      * @param string $width for example: 100px | 20%
      * @param string $height for example: 100px | 20%
-     * @param string $bgcolor for example: #fff or #ffffff or rgb(255,255,255) //todo!!!! rgb формат не понимает
+     * @param string $bgcolor for example: '#fff' or '#ffffff' - hex | '50,50,50' - rgb | '50,50,50,50' - cmyk
      * @param int $bgtransparency for example: 0
      * @param bool|false $allow_increase увеличивать изображение до максимального, если оно меньше
      */
@@ -83,7 +83,8 @@ class Fit implements IEffect
         if ($origWidth != $width && $origHeight != $height) {
             $oldImage = $img->copy();
             $oldImage->apply(new Scale($width, $height, 'up', $this->_allow_increase));
-            $img->create($width, $height, $this->_bgcolor, $this->_bgtransparency);
+            $bgcolor = $this->parseColor($this->_bgcolor);
+            $img->create($width, $height, $bgcolor, $this->_bgtransparency);
 
             $offset_x = $this->getWtOffset($this->_offset_x, $img->getWidth(), $oldImage->getWidth());
             $offset_y = $this->getWtOffset($this->_offset_y, $img->getHeight(), $oldImage->getHeight());

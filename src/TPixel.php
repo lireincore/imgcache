@@ -52,4 +52,28 @@ trait TPixel
 
         return $offset;
     }
+
+    /**
+     * @param string $color
+     * @return string|array
+     */
+    protected function parseColor($color)
+    {
+        if (false === strpos('#', $color)) {
+            $arr = explode(',', $color);
+            $count = count($arr);
+            if ($count == 3 || $count == 4) {
+                $result = [
+                    0 => trim($arr[0]),
+                    1 => trim($arr[1]),
+                    2 => trim($arr[2])
+                ];
+                if ($count == 4) $result[3] = trim($arr[3]);
+            } else return $color;
+        } else {
+            $result = $color;
+        }
+
+        return $result;
+    }
 }

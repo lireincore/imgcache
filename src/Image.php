@@ -159,7 +159,7 @@ class Image implements IImage
     /**
      * @param int $width
      * @param int $height
-     * @param string $color
+     * @param string|array $color
      * @param int $transparency
      * @return $this
      */
@@ -295,7 +295,7 @@ class Image implements IImage
 
     /**
      * @param float $angle
-     * @param string $bgcolor
+     * @param string|array $bgcolor
      * @param int $bgtransparency
      * @return $this
      */
@@ -374,7 +374,7 @@ class Image implements IImage
     /**
      * @return null|\Imagick|\Gmagick|resource
      */
-    protected function getDriverResObject()
+    private function getDriverResObject()
     {
         $object = null;
 
