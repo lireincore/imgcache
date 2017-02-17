@@ -6,7 +6,7 @@
 
 ## About
 
-Image effect, thumb and cache for PHP.
+Image effect, thumb and cache. Similar to imgcache in Drupal.
 
 ## Install
 
