@@ -10,12 +10,12 @@ Image effect, thumb and cache. Similar to imgcache in Drupal. Supports GD, Imagi
 
 ## Install
 
-Add the `lireincore/imgcache` package to your `require` section in the `composer.json` file
+Add the `"lireincore/imgcache": "dev-master"` package to your `require` section in the `composer.json` file
 
 or
 
 ``` bash
-$ composer require lireincore/imgcache
+$ composer require lireincore/imgcache dev-master
 ```
 
 ## Usage
