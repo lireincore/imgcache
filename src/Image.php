@@ -34,7 +34,29 @@ class Image implements IImage
      */
     public function __construct($driver = IImage::DRIVER_DEFAULT, $tryToUseOtherDrivers = true)
     {
-        if ($driver == IImage::DRIVER_GM || $driver == IImage::DRIVER_DEFAULT) {
+        if ($driver == IImage::DRIVER_IM || $driver == IImage::DRIVER_DEFAULT) {
+            try {
+                $this->_imagine = new \Imagine\Imagick\Imagine();
+                $this->_driver = IImage::DRIVER_IM;
+            } catch (\RuntimeException $ex1) {
+                if ($tryToUseOtherDrivers) {
+                    try {
+                        $this->_imagine = new \Imagine\Gd\Imagine();
+                        $this->_driver = IImage::DRIVER_GD;
+                    } catch (\RuntimeException $ex2) {
+                        try {
+                            $this->_imagine = new \Imagine\Gmagick\Imagine();
+                            $this->_driver = IImage::DRIVER_GM;
+                        } catch (\RuntimeException $ex3) {
+                            throw new \RuntimeException('Graphic library not installed or higher version is required');
+                        }
+                    }
+                } else {
+                    throw new \RuntimeException($ex1->getMessage());
+                }
+            }
+        }
+        elseif ($driver == IImage::DRIVER_GM) {
             try {
                 $this->_imagine = new \Imagine\Gmagick\Imagine();
                 $this->_driver = IImage::DRIVER_GM;
@@ -56,28 +78,6 @@ class Image implements IImage
                 }
             }
         }
-        elseif ($driver == IImage::DRIVER_IM) {
-            try {
-                $this->_imagine = new \Imagine\Imagick\Imagine();
-                $this->_driver = IImage::DRIVER_IM;
-            } catch (\RuntimeException $ex1) {
-                if ($tryToUseOtherDrivers) {
-                    try {
-                        $this->_imagine = new \Imagine\Gmagick\Imagine();
-                        $this->_driver = IImage::DRIVER_GM;
-                    } catch (\RuntimeException $ex2) {
-                        try {
-                            $this->_imagine = new \Imagine\Gd\Imagine();
-                            $this->_driver = IImage::DRIVER_GD;
-                        } catch (\RuntimeException $ex3) {
-                            throw new \RuntimeException('Graphic library not installed or higher version is required');
-                        }
-                    }
-                } else {
-                    throw new \RuntimeException($ex1->getMessage());
-                }
-            }
-        }
         elseif ($driver == IImage::DRIVER_GD) {
             try {
                 $this->_imagine = new \Imagine\Gd\Imagine();
@@ -85,12 +85,12 @@ class Image implements IImage
             } catch (\RuntimeException $ex1) {
                 if ($tryToUseOtherDrivers) {
                     try {
-                        $this->_imagine = new \Imagine\Gmagick\Imagine();
-                        $this->_driver = IImage::DRIVER_GM;
+                        $this->_imagine = new \Imagine\Imagick\Imagine();
+                        $this->_driver = IImage::DRIVER_IM;
                     } catch (\RuntimeException $ex2) {
                         try {
-                            $this->_imagine = new \Imagine\Imagick\Imagine();
-                            $this->_driver = IImage::DRIVER_IM;
+                            $this->_imagine = new \Imagine\Gmagick\Imagine();
+                            $this->_driver = IImage::DRIVER_GM;
                         } catch (\RuntimeException $ex3) {
                             throw new \RuntimeException('Graphic library not installed or higher version is required');
                         }
@@ -168,6 +168,7 @@ class Image implements IImage
         $size = new Box($width, $height);
         $palette = new RGB();
         if ($this->_driver == IImage::DRIVER_GM) {
+            // @todo: transparency not supported
             $color = $palette->color($color);
         } else {
             $color = $palette->color($color, $transparency);
@@ -215,11 +216,9 @@ class Image implements IImage
         if ($opacity != 100) {
             $img_res = $img->getDriverResObject();
             if ($this->_driver == IImage::DRIVER_GM) {
-                //todo!!!!
+                // @todo: opacity not supported
             } elseif ($this->_driver == IImage::DRIVER_IM) {
-                //todo!!!!
                 $img_res->setImageOpacity($opacity / 100);
-                //$img_res->evaluateImage($img_res::EVALUATE_MULTIPLY, 0.0, $img_res::CHANNEL_ALPHA);
             } elseif ($this->_driver == IImage::DRIVER_GD) {
                 $img_width = $img->getWidth();
                 $img_height = $img->getHeight();
@@ -234,8 +233,6 @@ class Image implements IImage
         }
 
         if ($opacity == 100 || $this->_driver == IImage::DRIVER_GM || $this->_driver == IImage::DRIVER_IM) {
-            //$img->paste($img, $offsetX, $offsetY, $opacity);
-
             $this->_img->paste($img->_img, new Point($offsetX, $offsetY));
         }
 
@@ -303,6 +300,7 @@ class Image implements IImage
     {
         $palette = new RGB();
         if ($this->_driver == IImage::DRIVER_GM) {
+            // @todo: transparency not supported
             $color = $palette->color($bgcolor);
         } else {
             $color = $palette->color($bgcolor, $bgtransparency);
@@ -364,8 +362,12 @@ class Image implements IImage
     {
         $destPathInfo = pathinfo($destPath);
         if (!is_dir($destPathInfo['dirname'])) {
-            $this->rmkdir($destPathInfo['dirname'], 0775);
+            $this->rmkdir($destPathInfo['dirname']);
         }
+
+        // @todo: png_compression_filter with GD have another format
+        if ($this->_driver == IImage::DRIVER_GD) unset($options['png_compression_filter']);
+
         $this->_img->save($destPath, $options);
 
         return $this;
@@ -390,14 +392,10 @@ class Image implements IImage
     }
 
     /**
-     * Создает каталоги рекурсивно и пытается назначить им указанные права, хозяина и группу
      * @param string $pathname
-     * @param int $mode
-     * @param mixed $user
-     * @param mixed $group
      * @throws \RuntimeException
      */
-    private function rmkdir($pathname, $mode = 0775, $user = null, $group = null)
+    private function rmkdir($pathname)
     {
         $dirs = array_filter(explode(DIRECTORY_SEPARATOR, $pathname));
         $path = '';
@@ -405,13 +403,8 @@ class Image implements IImage
         foreach ($dirs as $dir) {
             $path .= DIRECTORY_SEPARATOR . $dir;
             if (!is_dir($path)) {
-                if (!@mkdir($path, $mode)) {
+                if (!@mkdir($path, 0755)) {
                     throw new \RuntimeException("Failed to make dir '{$path}'");
-                }
-                else {
-                    @chmod($path, $mode);
-                    if (!is_null($user)) @chown($path, $user);
-                    if (!is_null($group)) @chgrp($path, $group);
                 }
             }
         }

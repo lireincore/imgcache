@@ -501,7 +501,7 @@ class ImgCache
                 'format' => $thumbOptions['format'],
                 'jpeg_quality' => $presetOptions['jpeg_quality'],
                 'png_compression_level' => $presetOptions['png_compression_level'],
-                //'png_compression_filter' => $presetOptions['png_compression_filter'],
+                'png_compression_filter' => $presetOptions['png_compression_filter'],
             ]);
         } catch (\Exception $ex) {
             $state = false;
@@ -520,8 +520,11 @@ class ImgCache
 
         if (!empty($preset['effects'])) {
             foreach ($preset['effects'] as $effectData) {
+                if (!isset($effectsList[$effectData['type']])) {
+                    throw new \RuntimeException("Unknown effect type: '{$effectData['type']}'");
+                }
                 $params = empty($effectData['params']) ? [] : $effectData['params'];
-                $effect = $this->create_class_array_assoc($effectsList[$effectData['type']], $params);
+                $effect = $this->createClassArrayAssoc($effectsList[$effectData['type']], $params);
                 $image->apply($effect);
             }
         }
@@ -652,17 +655,20 @@ class ImgCache
     }
 
     /**
-     * Создает объект передавая в конструктор ассоциативный массив
-     *
      * @param string $class
      * @param array $params [arg => value]
      * @return IEffect
      * @throws \RuntimeException
      */
-    private static function create_class_array_assoc($class, $params = [])
+    private static function createClassArrayAssoc($class, $params = [])
     {
         if (!class_exists($class)) {
-            throw new \RuntimeException('Call to unexisting class: '. $class);
+            throw new \RuntimeException("Call to unexisting class: '{$class}'");
+        }
+
+        $interfaces = class_implements($class);
+        if (!in_array('LireinCore\ImgCache\IEffect', $interfaces)) {
+            throw new \RuntimeException('Class does not implements LireinCore\ImgCache\IEffect');
         }
 
         $real_params = [];
@@ -673,7 +679,7 @@ class ImgCache
             foreach ($refMethod->getParameters() as $i => $param) {
                 $pname = $param->getName();
                 /*if ($param->isPassedByReference()) {
-                    /// @todo shall we raise some warning?
+                    // @todo: shall we raise some warning?
                 }*/
                 if (array_key_exists($pname, $params)) {
                     $real_params[] = $params[$pname];
@@ -681,7 +687,7 @@ class ImgCache
                     $real_params[] = $param->getDefaultValue();
                 } else {
                     $title = $class . '::__construct';
-                    throw new \RuntimeException('Call to ' . $title . ' missing parameter nr. ' . ($i + 1) . ': ' . $pname);
+                    throw new \RuntimeException('Call to ' . $title . ' missing parameter nr. ' . ($i + 1) . ": '{$pname}'");
                 }
             }
         }
@@ -692,7 +698,6 @@ class ImgCache
     }
 
     /**
-     * Удаляет каталог и все его содержимое
      * @param string $pathname
      * @return bool
      */
@@ -706,7 +711,7 @@ class ImgCache
                 if (is_dir($full)) {
                     $this->rrmdir($full);
                 } else {
-                    unlink($full);
+                    @unlink($full);
                 }
             }
         }

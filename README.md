@@ -6,7 +6,7 @@
 
 ## About
 
-Image effect, thumb and cache. Similar to imgcache in Drupal.
+Image effect, thumb and cache. Similar to imgcache in Drupal. Supports GD, Imagick and Gmagick.
 
 ## Install
 
@@ -15,7 +15,7 @@ Add the `lireincore/imgcache` package to your `require` section in the `composer
 or
 
 ``` bash
-$ composer require lireincore/imgcache dev-master
+$ composer require lireincore/imgcache
 ```
 
 ## Usage
@@ -26,7 +26,7 @@ $ composer require lireincore/imgcache dev-master
 use LireinCore\ImgCache\ImgCache;
 
 $config = [
-    //graphic library for all presets: gmagick, imagick, gd (default: gmagick->imagick->gd)
+    //graphic library for all presets: imagick, gd, gmagick (by default, tries to use: imagick->gd->gmagick)
     'driver' => 'gmagick',
     
     //original images source directory for all presets
@@ -242,19 +242,19 @@ $config = [
 
 $imgcache = new ImgCache($config);
 
-//get thumb path for image '/path/to/my/project/backend/uploads/user/image.jpg' (preset 'origin')
+//get thumb path for image '{srcdir}/user/image.jpg' (preset 'origin')
 $thumbPath = $imgcache->path('origin', 'user/image.jpg');
-//$thumbPath: '/path/to/my/project/backend/www/thumbs/presets/origin/user/image.jpg'
+//$thumbPath: '{destdir}/presets/origin/user/image.jpg'
 //if the source image is not found
-//$thumbPath: '/path/to/my/project/backend/www/thumbs/plugs/origin/plug_origin.png'
+//$thumbPath: '{destdir}/plugs/origin/plug_origin.png'
 
-//get thumb relative url for image '/path/to/my/project/uploads/blog/image.jpg' (preset 'content_preview')
+//get thumb relative url for image '{srcdir}/blog/image.jpg' (preset 'content_preview')
 $thumbRelUrl = $imgcache->url('content_preview', 'blog/image.jpg');
 //$thumbRelUrl: '/thumbs/presets/content_preview/blog/image.jpg'
 
-//get thumb absolute url for image '/path/to/my/project/uploads/news/image.jpg' (preset 'test')
+//get thumb absolute url for image '{srcdir}/news/image.jpg' (preset 'test')
 $thumbAbsUrl = $imgcache->url('test', 'news/image.jpg', true);
-//$thumbAbsUrl: 'https://www.mysite.com/thumbs/presets/test/news/image.jpg'
+//$thumbAbsUrl: '{baseurl}/thumbs/presets/test/news/image.jpg'
 
 //register custom effect
 $imgcache->registerEffect('effectName', '\My\Effects\EffectClass');
@@ -262,8 +262,8 @@ $imgcache->registerEffect('effectName', '\My\Effects\EffectClass');
 //unregister effect
 $imgcache->unregisterEffect('effectName');
 
-//clear all file thumbs (path should be specified as path() and url())
-$imgcache->clearFileThumbs('/path/to/file');
+//clear all file thumbs ($path should be specified as path() and url())
+$imgcache->clearFileThumbs($path);
 
 //clear all preset thumbs
 $imgcache->clearPresetThumbs('presetName');

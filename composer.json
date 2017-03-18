@@ -6,9 +6,13 @@
     "keywords": ["image", "cache", "thumb", "effect", "resize", "filter", "action"],
     "homepage": "https://github.com/lireincore/imgcache",
     "license": "MIT",
+    "support": {
+        "issues": "https://github.com/lireincore/imgcache/issues",
+        "source": "https://github.com/lireincore/imgcache"
+    },
     "authors": [
         {
-            "name": "LireinCore",
+            "name": "lirein",
             "email": "lirein@inbox.ru"
         }
     ],
