@@ -8,7 +8,7 @@
 
 Image effect, thumb and cache. Similar to imgcache in Drupal. Supports GD, Imagick and Gmagick.
 
-In Yii2 framework, you can also use a special extension [lireincore/yii2-imgcache](https://github.com/lireincore/yii2-imgcache) that integrates this package.
+Also you can use a special extension [lireincore/yii2-imgcache](https://github.com/lireincore/yii2-imgcache) that integrates this package with Yii2 framework.
 
 ## Install
 
