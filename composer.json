@@ -1,7 +1,6 @@
 {
     "name": "lireincore/imgcache",
     "description": "Image effect, thumb and cache. Similar to imgcache in Drupal.",
-    "version": "0.3.0",
     "type": "library",
     "keywords": ["image", "cache", "thumb", "effect", "resize", "filter", "action"],
     "homepage": "https://github.com/lireincore/imgcache",

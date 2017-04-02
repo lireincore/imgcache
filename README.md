@@ -17,7 +17,7 @@ Add the `"lireincore/imgcache": "dev-master"` package to your `require` section 
 or
 
 ``` bash
-$ composer require lireincore/imgcache dev-master
+$ php composer.phar require lireincore/imgcache dev-master
 ```
 
 ## Usage
@@ -62,7 +62,7 @@ $config = [
         '*' => 'jpeg' //all others to jpeg
     ],
     
-    //plug for all presets
+    //plug for all presets (used if original image is not available)
     'plug' => [
         //absolute path to plug
         'path' => '/path/to/my/project/assets/plug.png',
@@ -93,12 +93,12 @@ $config = [
                     'type' => 'overlay',
                     //effect params
                     'params' => [
-                        'path' => '/path/to/my/project/assets/watermark.png',
-                        'opacity' => 80,
-                        'offset_x' => 'right',
-                        'offset_y' => 'bottom',
-                        'width' => '50%',
-                        'height' => '50%'
+                        'path' => '/path/to/my/project/assets/watermark.png', // path to overlay
+                        'opacity' => 80, // (0-100) (default: 100) (not supported in gmagick)
+                        'offset_x' => 'right', // overlay horizontal offset (for example: 100px | 20% | center | left | right) (default: right)
+                        'offset_y' => 'bottom', // overlay vertical offset (for example: 100px | 20% | center | top | bottom) (default: bottom)
+                        'width' => '50%', // overlay width (for example: 100px | 20% - relative to the background image | origin - original overlay width) (default: origin)
+                        'height' => '50%' // overlay height (for example: 100px | 20% - relative to the background image | origin - original overlay height) (default: origin)
                     ]
                 ],
             ],
@@ -130,7 +130,7 @@ $config = [
             //compression filter of save png images for preset 'origin'
             'png_compression_filter' => 9,
             
-            //plug for preset 'origin'
+            //plug for preset 'origin' (used if original image is not available)
             'plug' => [
                 'path' => '/path/to/my/project/backend/assets/plug_origin.png',
                 'effects' => false
@@ -147,34 +147,34 @@ $config = [
                 0 => [
                     'type' => 'scale',
                     'params' => [
-                        'width' => '500px',
-                        'height' => '500px',
-                        'direct' => 'up',
-                        'allow_fit' => true
+                        'width' => '500px', // (for example: 100px | 20% | auto)
+                        'height' => '500px', // (for example: 100px | 20% | auto)
+                        'direct' => 'up', // scaling direction (for example: up - not greater | down - not less) (default: up)
+                        'allow_fit' => true // decrease if image is greater or increase if image is less (default: false)
                     ]
                 ],
                 //second effect
                 1 => [
                     'type' => 'crop',
                     'params' => [
-                        'offset_x' => '50%',
-                        'offset_y' => '50%',
-                        'width' => '50%',
-                        'height' => '50%'
+                        'offset_x' => '50%', // (for example: 100px | 20% | center)
+                        'offset_y' => '50%', // (for example: 100px | 20% | center)
+                        'width' => '50%', // (for example: 100px | 20%)
+                        'height' => '50%' // (for example: 100px | 20%)
                     ]
                 ],
                 //third effect
                 2 => [
                     'type' => 'gamma',
                     'params' => [
-                        'correction' => 0.8
+                        'correction' => 0.8 // gamma correction (0.0-1.0)
                     ]
                 ],
                 //fourth effect
                 3 => [
                     'type' => 'blur',
                     'params' => [
-                        'sigma' => 3
+                        'sigma' => 3 // standard deviation (default: 1)
                     ]
                 ]
             ],
@@ -184,7 +184,7 @@ $config = [
                 'gif' => 'jpeg'
             ],
             'plug' => [
-                //url to get the plug from a third-party service (works only for function url())
+                //url to get the plug from a third-party service
                 'url' => 'http://placehold.it/100x100'
             ],
         ],
@@ -198,13 +198,13 @@ $config = [
                 1 => [
                     'type' => 'fit',
                     'params' => [
-                        'offset_x' => 'center',
-                        'offset_y' => 'center',
-                        'width' => '200',
-                        'height' => '90',
-                        'bgcolor' => '#f00',
-                        'bgtransparency' => 50,
-                        'allow_increase' => true
+                        'offset_x' => 'center', // (for example: 100px | 20% | center | left | right)
+                        'offset_y' => 'center', // (for example: 100px | 20% | center | top | bottom)
+                        'width' => '200', // (for example: 100px | 20%)
+                        'height' => '90', // (for example: 100px | 20%)
+                        'bgcolor' => '#f00', // background color (for example: '#fff' or '#ffffff' - hex | '50,50,50' - rgb | '50,50,50,50' - cmyk) (default: #fff) 
+                        'bgtransparency' => 50, // background transparency (0-100) (default: 0) (not supported in gmagick)
+                        'allow_increase' => true // increase if image is less (default: false)
                     ]
                 ]
             ],
@@ -219,22 +219,22 @@ $config = [
                 1 => [
                     'type' => 'flip',
                     'params' => [
-                        'mode' => 'horizontal'
+                        'mode' => 'horizontal' // (for example: vertical | horizontal | full)
                     ]
                 ],
                 2 => [
                     'type' => 'resize',
                     'params' => [
-                        'width' => '100',
-                        'height' => '100'
+                        'width' => '100', // (for example: 100px | 20%)
+                        'height' => '100' // (for example: 100px | 20%)
                     ]
                 ],
                 3 => [
                     'type' => 'rotate',
                     'params' => [
-                        'angle' => 90,
-                        'bgcolor' => '#fff',
-                        'bgtransparency' => 70
+                        'angle' => 90, // angle in degrees
+                        'bgcolor' => '#f00', // background color (for example: '#fff' or '#ffffff' - hex | '50,50,50' - rgb | '50,50,50,50' - cmyk) (default: #fff) 
+                        'bgtransparency' => 70 // background transparency (0-100) (default: 0) (not supported in gmagick)
                     ]
                 ]
             ],
