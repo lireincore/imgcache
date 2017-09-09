@@ -30,6 +30,7 @@ class Image implements IImage
      *
      * @param int $driver
      * @param bool $tryToUseOtherDrivers
+     *
      * @throws \RuntimeException
      */
     public function __construct($driver = IImage::DRIVER_DEFAULT, $tryToUseOtherDrivers = true)
@@ -55,8 +56,7 @@ class Image implements IImage
                     throw new \RuntimeException($ex1->getMessage());
                 }
             }
-        }
-        elseif ($driver == IImage::DRIVER_GM) {
+        } elseif ($driver == IImage::DRIVER_GM) {
             try {
                 $this->_imagine = new \Imagine\Gmagick\Imagine();
                 $this->_driver = IImage::DRIVER_GM;
@@ -77,8 +77,7 @@ class Image implements IImage
                     throw new \RuntimeException($ex1->getMessage());
                 }
             }
-        }
-        elseif ($driver == IImage::DRIVER_GD) {
+        } elseif ($driver == IImage::DRIVER_GD) {
             try {
                 $this->_imagine = new \Imagine\Gd\Imagine();
                 $this->_driver = IImage::DRIVER_GD;
@@ -99,8 +98,7 @@ class Image implements IImage
                     throw new \RuntimeException($ex1->getMessage());
                 }
             }
-        }
-        else {
+        } else {
             throw new \RuntimeException('Unknown graphic library');
         }
     }
@@ -146,7 +144,9 @@ class Image implements IImage
 
     /**
      * @param $filepath
+     *
      * @return $this
+     *
      * @throws \RuntimeException
      */
     public function open($filepath)
@@ -161,6 +161,7 @@ class Image implements IImage
      * @param int $height
      * @param string|array $color
      * @param int $transparency
+     *
      * @return $this
      */
     public function create($width, $height, $color = '#fff', $transparency = 0)
@@ -191,6 +192,7 @@ class Image implements IImage
 
     /**
      * @param IEffect $effect
+     *
      * @return $this
      */
     public function apply(IEffect $effect)
@@ -205,6 +207,7 @@ class Image implements IImage
      * @param int $offsetX
      * @param int $offsetY
      * @param int $opacity
+     *
      * @return $this
      */
     public function paste(IImage $img, $offsetX, $offsetY, $opacity = 100)
@@ -243,6 +246,7 @@ class Image implements IImage
      * @param int $width
      * @param int $height
      * @param string $filter
+     *
      * @return $this
      */
     public function resize($width, $height, $filter = IImage::FILTER_UNDEFINED)
@@ -259,6 +263,7 @@ class Image implements IImage
      * @param int $offsetY
      * @param int $width
      * @param int $height
+     *
      * @return $this
      */
     public function crop($offsetX, $offsetY, $width, $height)
@@ -294,6 +299,7 @@ class Image implements IImage
      * @param float $angle
      * @param string|array $bgcolor
      * @param int $bgtransparency
+     *
      * @return $this
      */
     public function rotate($angle, $bgcolor = '#fff', $bgtransparency = 0)
@@ -332,6 +338,7 @@ class Image implements IImage
 
     /**
      * @param float $correction
+     *
      * @return $this
      */
     public function gamma($correction)
@@ -343,6 +350,7 @@ class Image implements IImage
 
     /**
      * @param float $sigma
+     *
      * @return $this
      */
     public function blur($sigma)
@@ -355,7 +363,9 @@ class Image implements IImage
     /**
      * @param string $destPath
      * @param array $options
+     *
      * @return $this
+     *
      * @throws \RuntimeException
      */
     public function save($destPath, $options = [])
@@ -366,7 +376,9 @@ class Image implements IImage
         }
 
         // @todo: png_compression_filter with GD have another format
-        if ($this->_driver == IImage::DRIVER_GD) unset($options['png_compression_filter']);
+        if ($this->_driver == IImage::DRIVER_GD) {
+            unset($options['png_compression_filter']);
+        }
 
         $this->_img->save($destPath, $options);
 
@@ -393,6 +405,7 @@ class Image implements IImage
 
     /**
      * @param string $pathname
+     *
      * @throws \RuntimeException
      */
     private function rmkdir($pathname)

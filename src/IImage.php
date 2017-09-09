@@ -54,6 +54,7 @@ interface IImage
      * @param bool $tryToUseOtherDrivers
      *
      * @return IImage
+     *
      * @throws \RuntimeException
      */
     public static function newInstance($driver = IImage::DRIVER_DEFAULT, $tryToUseOtherDrivers = true);
@@ -77,6 +78,7 @@ interface IImage
      * @param $filepath
      *
      * @return $this
+     *
      * @throws \RuntimeException
      */
     public function open($filepath);
@@ -180,6 +182,7 @@ interface IImage
      * @param array $options
      *
      * @return $this
+     *
      * @throws \RuntimeException
      */
     public function save($destPath, $options = []);

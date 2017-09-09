@@ -17,17 +17,17 @@ class ImgCache
     /**
      * @var array
      */
-    private $_presets = [];
-
-    /**
-     * @var array
-     */
     private $_options = [];
 
     /**
      * @var array
      */
     private $_presetsOptions = [];
+
+    /**
+     * @var array
+     */
+    private $_presetsEffects = [];
 
     /**
      * @var array
@@ -42,10 +42,6 @@ class ImgCache
     public function __construct($config = null)
     {
         if ($config !== null) {
-            if (is_string($config)) {
-                $config = require($config);
-            }
-
             $this->setConfig($config);
         }
     }
@@ -63,6 +59,7 @@ class ImgCache
 
         $this->_options = [];
         $this->_presetsOptions = [];
+        $this->_presetsEffects = [];
         $this->_thumbsOptions = [];
 
         $this->_effects = [
@@ -84,10 +81,6 @@ class ImgCache
                 $this->registerEffect($name, $class);
             }
         }
-
-        if (isset($config['presets'])) {
-            $this->_presets = $config['presets'];
-        }
     }
 
     /**
@@ -99,44 +92,17 @@ class ImgCache
     }
 
     /**
-     * @param string $name
-     * @param string $class
-     */
-    public function registerEffect($name, $class)
-    {
-        if (class_exists($class)) {
-            $interfaces = class_implements($class);
-            if (in_array('LireinCore\ImgCache\IEffect', $interfaces)) {
-                $this->_effects[$name] = $class;
-            }
-        }
-    }
-
-    /**
-     * @param string $name
-     */
-    public function unregisterEffect($name)
-    {
-        unset($this->_effects[$name]);
-    }
-
-    /**
-     * @return array
-     */
-    public function getEffects()
-    {
-        return $this->_effects;
-    }
-
-    /**
      * @param string $presetName
      * @param string|null $fileRelPath
      * @param bool $usePlug
+     *
      * @return bool|string
      */
     public function path($presetName, $fileRelPath = null, $usePlug = true)
     {
-        if (!isset($this->_presets[$presetName])) return false;
+        if (!isset($this->_config['presets'][$presetName])) {
+            return false;
+        }
         $path = $fileRelPath === null ? false : $path = $this->getThumbPath($presetName, $fileRelPath);
 
         if (!$path && $usePlug) {
@@ -151,34 +117,43 @@ class ImgCache
      * @param string|null $fileRelPath
      * @param bool $absolute
      * @param bool $usePlug
+     *
      * @return bool|string
      */
     public function url($presetName = null, $fileRelPath = null, $absolute = false, $usePlug = true)
     {
         if ($presetName === null) {
             $options = $this->getOptions();
-            if ($options['plugUrl']) return $options['plugUrl'];
-            else return false;
-        } elseif (!isset($this->_presets[$presetName])) return false;
-
-        $preset = $this->_presets[$presetName];
-        $presetOptions = $this->getPresetOptions($presetName);
+            if ($options['plugUrl']) {
+                return $options['plugUrl'];
+            } else {
+                return false;
+            }
+        } elseif (!isset($this->_config['presets'][$presetName])) {
+            return false;
+        }
 
         $path = $fileRelPath === null ? false : $path = $this->getThumbPath($presetName, $fileRelPath);
         if ($path) {
             $url = $this->getUrl($presetName, $path, $absolute);
-            if ($url) return $url;
+            if ($url) {
+                return $url;
+            }
         }
 
         if ($usePlug) {
+            $preset = $this->_config['presets'][$presetName];
             if (!empty($preset['plug']['path']) || empty($preset['plug']['url'])) {
                 $path = $this->getPlugPath($presetName);
                 if ($path) {
                     $url = $this->getUrl($presetName, $path, $absolute);
-                    if ($url) return $url;
+                    if ($url) {
+                        return $url;
+                    }
                 }
             }
 
+            $presetOptions = $this->getPresetOptions($presetName);
             if ($presetOptions['plugUrl']) {
                 return $presetOptions['plugUrl'];
             }
@@ -188,8 +163,78 @@ class ImgCache
     }
 
     /**
+     * @param string $fileRelPath
+     * @param string|null $presetName
+     */
+    public function clearFileThumbs($fileRelPath, $presetName = null)
+    {
+        $fileRelPath = ltrim($fileRelPath, "\\/");
+        if ($presetName) {
+            if (isset($this->_config['presets'][$presetName])) {
+                $this->clearFileThumb($fileRelPath, $presetName);
+            }
+        } else {
+            foreach ($this->_config['presets'] as $presetName => $preset) {
+                $this->clearFileThumb($fileRelPath, $presetName);
+            }
+        }
+    }
+
+    /**
+     * @param string|null $presetName
+     */
+    public function clearPlugsThumbs($presetName = null)
+    {
+        $presetOptions = $this->getPresetOptions($presetName);
+        if ($presetName) {
+            static::rrmdir($presetOptions['destdir'] . DIRECTORY_SEPARATOR . 'plugs' . DIRECTORY_SEPARATOR . $presetName);
+        }
+        else {
+            static::rrmdir($presetOptions['destdir'] . DIRECTORY_SEPARATOR . 'plugs');
+        }
+    }
+
+    /**
+     * @param string $presetName
+     */
+    public function clearPresetThumbs($presetName)
+    {
+        $presetOptions = $this->getPresetOptions($presetName);
+        static::rrmdir($presetOptions['destdir'] . DIRECTORY_SEPARATOR . 'presets' . DIRECTORY_SEPARATOR . $presetName);
+    }
+
+    /**
+     * @param string $fileRelPath
+     * @param string $presetName
+     */
+    private function clearFileThumb($fileRelPath, $presetName)
+    {
+        $presetOptions = $this->getPresetOptions($presetName);
+        $thumbOptions = $this->getThumbOptions($fileRelPath, $presetName);
+        $path = $presetOptions['destdir'] . DIRECTORY_SEPARATOR . $thumbOptions['path'];
+        if (file_exists($path)) {
+            unlink($path);
+        }
+    }
+
+    /**
+     * @param string $name
+     * @param string $class
+     */
+    private function registerEffect($name, $class)
+    {
+        if (class_exists($class)) {
+            $interfaces = class_implements($class);
+            if (in_array('LireinCore\ImgCache\IEffect', $interfaces)) {
+                $this->_effects[$name] = $class;
+            }
+        }
+    }
+
+    /**
      * @param string $presetName
      * @param string $fileRelPath
+     *
      * @return bool|string
      */
     private function getThumbPath($presetName, $fileRelPath)
@@ -212,6 +257,7 @@ class ImgCache
 
     /**
      * @param string $presetName
+     *
      * @return bool|string
      */
     private function getPlugPath($presetName)
@@ -220,14 +266,17 @@ class ImgCache
 
         if ($presetOptions['plugPath']) {
             $srcFullPath = $presetOptions['plugPath'];
+        } else {
+            return false;
         }
-        else return false;
 
         $thumbOptions = $this->getThumbOptions($srcFullPath, $presetName, true);
         $destFullPath = $presetOptions['destdir'] . DIRECTORY_SEPARATOR . $thumbOptions['subpath'];
 
         if (!is_file($destFullPath)) {
-            if (!$this->createThumb($presetName, $srcFullPath, $destFullPath, $thumbOptions)) return false;
+            if (!$this->createThumb($presetName, $srcFullPath, $destFullPath, $thumbOptions)) {
+                return false;
+            }
         }
 
         return $destFullPath;
@@ -237,6 +286,7 @@ class ImgCache
      * @param string $presetName
      * @param string $path
      * @param bool $absolute
+     *
      * @return bool|string
      */
     private function getUrl($presetName, $path, $absolute = false)
@@ -252,88 +302,6 @@ class ImgCache
         }
 
         return false;
-    }
-
-    /**
-     * @param string $fileRelPath
-     * @param string|null $presetName
-     */
-    public function clearFileThumbs($fileRelPath, $presetName = null)
-    {
-        $presetOptions = $this->getPresetOptions($presetName);
-        $fileRelPath = ltrim($fileRelPath, "\\/");
-        if ($presetName) {
-            if (isset($this->_presets[$presetName])) {
-                $thumbOptions = $this->getThumbOptions($fileRelPath, $presetName);
-                $path = $presetOptions['destdir'] . DIRECTORY_SEPARATOR . $thumbOptions['path'];
-                if (file_exists($path)) unlink($path);
-            }
-        }
-        else {
-            foreach ($this->_presets as $presetName => $preset) {
-                $thumbOptions = $this->getThumbOptions($fileRelPath, $presetName);
-                $path = $presetOptions['destdir'] . DIRECTORY_SEPARATOR . $thumbOptions['path'];
-                if (file_exists($path)) unlink($path);
-            }
-        }
-    }
-
-    /**
-     * @param string $presetName
-     */
-    public function clearPresetThumbs($presetName)
-    {
-        $presetOptions = $this->getPresetOptions($presetName);
-        $this->rrmdir($presetOptions['destdir'] . DIRECTORY_SEPARATOR . 'presets' . DIRECTORY_SEPARATOR . $presetName);
-    }
-
-    /**
-     * @param string|null $presetName
-     */
-    public function clearPlugsThumbs($presetName = null)
-    {
-        $presetOptions = $this->getPresetOptions($presetName);
-        if ($presetName) {
-            $this->rrmdir($presetOptions['destdir'] . DIRECTORY_SEPARATOR . 'plugs' . DIRECTORY_SEPARATOR . $presetName);
-        }
-        else {
-            $this->rrmdir($presetOptions['destdir'] . DIRECTORY_SEPARATOR . 'plugs');
-        }
-    }
-
-    /**
-     * @param array $convert
-     * @return array
-     */
-    private function getConvertMap($convert)
-    {
-        $convertMap = [];
-
-        foreach ($convert as $srcstr => $dest) {
-            foreach (explode(',', $srcstr) as $src) {
-                $convertMap[trim($src)] = trim($dest);
-            }
-        }
-
-        return $convertMap;
-    }
-
-    /**
-     * @param string $driver
-     * @return int
-     */
-    private function getDriverCode($driver)
-    {
-        $driverCode = null;
-
-        switch ($driver) {
-            case 'gmagick': $driverCode = IImage::DRIVER_GM; break;
-            case 'imagick': $driverCode = IImage::DRIVER_IM; break;
-            case 'gd': $driverCode = IImage::DRIVER_GD; break;
-            default: $driverCode = IImage::DRIVER_DEFAULT;
-        }
-
-        return $driverCode;
     }
 
     /**
@@ -362,7 +330,7 @@ class ImgCache
             }
 
             $this->_options = [
-                'driverCode' => !empty($config['driver']) ? $this->getDriverCode($config['driver']) : IImage::DRIVER_DEFAULT,
+                'driverCode' => !empty($config['driver']) ? static::getDriverCode($config['driver']) : IImage::DRIVER_DEFAULT,
                 'srcdir' => !empty($config['srcdir']) ? rtrim($config['srcdir'], "\\/") : '',
                 'destdir' => !empty($config['destdir']) ? rtrim($config['destdir'], "\\/") : sys_get_temp_dir(),
                 'realWebDir' => !empty($config['webdir']) ? realpath($config['webdir']) : '',
@@ -370,7 +338,7 @@ class ImgCache
                 'plugPath' => !empty($config['plug']['path']) ? $config['plug']['path'] : '',
                 'plugEffects' => isset($config['plug']['effects']) ? $config['plug']['effects'] : true,
                 'plugUrl' => !empty($config['plug']['url']) ? $config['plug']['url'] : null,
-                'convertMap' => isset($config['convert']) ? $this->getConvertMap($config['convert']) + $defaultConvertMap : $defaultConvertMap,
+                'convertMap' => isset($config['convert']) ? static::getConvertMap($config['convert']) + $defaultConvertMap : $defaultConvertMap,
                 'jpeg_quality' => isset($config['jpeg_quality']) ? $config['jpeg_quality'] : 75,
                 'png_compression_level' => isset($config['png_compression_level']) ? $config['png_compression_level'] : 7,
                 'png_compression_filter' => isset($config['png_compression_filter']) ? $config['png_compression_filter'] : 5,
@@ -383,16 +351,17 @@ class ImgCache
 
     /**
      * @param string $presetName
+     *
      * @return array
      */
     private function getPresetOptions($presetName)
     {
         if (!isset($this->_presetsOptions[$presetName])) {
             $options = $this->getOptions();
-            $preset = $this->_presets[$presetName];
+            $preset = $this->_config['presets'][$presetName];
             $convertMap = [];
             if (!empty($preset['convert'])) {
-                $convertMap = $this->getConvertMap($preset['convert']);
+                $convertMap = static::getConvertMap($preset['convert']);
             }
             if ($options['convertMap']) {
                 $convertMap += $options['convertMap'];
@@ -407,7 +376,7 @@ class ImgCache
             }
 
             $this->_presetsOptions[$presetName] = [
-                'driverCode' => !empty($preset['driver']) ? $this->getDriverCode($preset['driver']) : $options['driverCode'],
+                'driverCode' => !empty($preset['driver']) ? static::getDriverCode($preset['driver']) : $options['driverCode'],
                 'srcdir' => !empty($preset['srcdir']) ? rtrim($preset['srcdir'], "\\/") : $options['srcdir'],
                 'destdir' => !empty($preset['destdir']) ? rtrim($preset['destdir'], "\\/") : $options['destdir'],
                 'realWebDir' => !empty($preset['webdir']) ? realpath($preset['webdir']) : $options['realWebDir'],
@@ -430,6 +399,7 @@ class ImgCache
      * @param string $filepath
      * @param string $presetName
      * @param bool $isPlug
+     *
      * @return array
      */
     private function getThumbOptions($filepath, $presetName, $isPlug = false)
@@ -445,7 +415,7 @@ class ImgCache
 
         $presetOptions = $this->getPresetOptions($presetName);
         $convertMap = $presetOptions['convertMap'];
-        $originalFormat = $this->getFormatByExt($originalExt);
+        $originalFormat = static::getFormatByExt($originalExt);
 
         if (key_exists($originalFormat, $convertMap)) {
             $format = $convertMap[$originalFormat];
@@ -455,13 +425,15 @@ class ImgCache
             $format = $originalFormat;
         }
 
-        $ext = $this->getExtByFormat($format);
+        $ext = static::getExtByFormat($format);
 
         $subPath = "{$destInfo['filename']}.{$ext}";
         if ($isPlug) {
             $subPath = 'plugs' . DIRECTORY_SEPARATOR . $presetName . DIRECTORY_SEPARATOR . $subPath;
         } else {
-            if ($destInfo['dirname'] !== '.') $subPath = $destInfo['dirname'] . DIRECTORY_SEPARATOR . $subPath;
+            if ($destInfo['dirname'] !== '.') {
+                $subPath = $destInfo['dirname'] . DIRECTORY_SEPARATOR . $subPath;
+            }
             $subPath = 'presets' . DIRECTORY_SEPARATOR . $presetName . DIRECTORY_SEPARATOR . $subPath;
         }
 
@@ -486,6 +458,7 @@ class ImgCache
      * @param string $srcPath
      * @param string $destPath
      * @param array $thumbOptions
+     *
      * @return bool
      */
     private function createThumb($presetName, $srcPath, $destPath, $thumbOptions)
@@ -495,7 +468,7 @@ class ImgCache
             $presetOptions = $this->getPresetOptions($presetName);
             $image = (new $presetOptions['imageClass']($presetOptions['driverCode'], false))->open($srcPath);
             if (!$thumbOptions['isPlug'] || $presetOptions['plugEffects']) {
-                $this->applyPreset($image, $this->_presets[$presetName]);
+                $this->applyPreset($image, $presetName);
             }
             $image->save($destPath, [
                 'format' => $thumbOptions['format'],
@@ -512,28 +485,81 @@ class ImgCache
 
     /**
      * @param IImage $image
-     * @param array $preset
+     * @param string $presetName
      */
-    private function applyPreset($image, $preset)
+    private function applyPreset($image, $presetName)
     {
-        $effectsList = $this->getEffects();
+        $preset = $this->_config['presets'][$presetName];
 
         if (!empty($preset['effects'])) {
-            foreach ($preset['effects'] as $effectData) {
-                if (!isset($effectsList[$effectData['type']])) {
-                    throw new \RuntimeException("Unknown effect type: '{$effectData['type']}'");
+            if (isset($this->_presetsEffects[$presetName])) {
+                foreach ($this->_presetsEffects[$presetName] as $effect) {
+                    $image->apply($effect);
                 }
-                $params = empty($effectData['params']) ? [] : $effectData['params'];
-                $effect = $this->createClassArrayAssoc($effectsList[$effectData['type']], $params);
-                $image->apply($effect);
+            } else {
+                $effects = [];
+                foreach ($preset['effects'] as $effectData) {
+                    if (!isset($this->_effects[$effectData['type']])) {
+                        throw new \RuntimeException("Unknown effect type: '{$effectData['type']}'");
+                    }
+                    $params = empty($effectData['params']) ? [] : $effectData['params'];
+                    $effect = static::createClassArrayAssoc($this->_effects[$effectData['type']], $params);
+                    $effects[] = $effect;
+                    $image->apply($effect);
+                }
+                $this->_presetsEffects[$presetName] = $effects;
             }
         }
     }
 
     /**
+     * @param array $convert
+     *
      * @return array
      */
-    private function getFormats()
+    private static function getConvertMap($convert)
+    {
+        $convertMap = [];
+
+        foreach ($convert as $srcstr => $dest) {
+            foreach (explode(',', $srcstr) as $src) {
+                $convertMap[trim($src)] = trim($dest);
+            }
+        }
+
+        return $convertMap;
+    }
+
+    /**
+     * @param string $driver
+     *
+     * @return int
+     */
+    private static function getDriverCode($driver)
+    {
+        $driverCode = null;
+
+        switch ($driver) {
+            case 'gmagick':
+                $driverCode = IImage::DRIVER_GM;
+                break;
+            case 'imagick':
+                $driverCode = IImage::DRIVER_IM;
+                break;
+            case 'gd':
+                $driverCode = IImage::DRIVER_GD;
+                break;
+            default:
+                $driverCode = IImage::DRIVER_DEFAULT;
+        }
+
+        return $driverCode;
+    }
+
+    /**
+     * @return array
+     */
+    private static function getFormats()
     {
         return [
             'jpeg' => [
@@ -613,14 +639,17 @@ class ImgCache
 
     /**
      * @param string $mime
+     *
      * @return null|string
      */
-    /*private function getFormatByMime($mime)
+    /*private static function getFormatByMime($mime)
     {
-        $formats = $this->getFormats();
+        $formats = static::getFormats();
 
         foreach ($formats as $name => $format) {
-            if (in_array($mime, $format['mime'])) return $name;
+            if (in_array($mime, $format['mime'])) {
+                return $name;
+            }
         }
 
         return null;
@@ -628,14 +657,17 @@ class ImgCache
 
     /**
      * @param string $ext
+     *
      * @return null|string
      */
-    private function getFormatByExt($ext)
+    private static function getFormatByExt($ext)
     {
-        $formats = $this->getFormats();
+        $formats = static::getFormats();
 
         foreach ($formats as $name => $format) {
-            if (in_array($ext, $format['ext'])) return $name;
+            if (in_array($ext, $format['ext'])) {
+                return $name;
+            }
         }
 
         return null;
@@ -643,13 +675,16 @@ class ImgCache
 
     /**
      * @param string $format
+     *
      * @return null|string
      */
-    private function getExtByFormat($format)
+    private static function getExtByFormat($format)
     {
-        $formats = $this->getFormats();
+        $formats = static::getFormats();
 
-        if (isset($formats[$format]['ext'][0])) return $formats[$format]['ext'][0];
+        if (isset($formats[$format]['ext'][0])) {
+            return $formats[$format]['ext'][0];
+        }
 
         return null;
     }
@@ -657,7 +692,9 @@ class ImgCache
     /**
      * @param string $class
      * @param array $params [arg => value]
+     *
      * @return IEffect
+     *
      * @throws \RuntimeException
      */
     private static function createClassArrayAssoc($class, $params = [])
@@ -687,6 +724,7 @@ class ImgCache
                     $real_params[] = $param->getDefaultValue();
                 } else {
                     $title = $class . '::__construct';
+
                     throw new \RuntimeException('Call to ' . $title . ' missing parameter nr. ' . ($i + 1) . ": '{$pname}'");
                 }
             }
@@ -699,17 +737,20 @@ class ImgCache
 
     /**
      * @param string $pathname
+     *
      * @return bool
      */
-    private function rrmdir($pathname)
+    private static function rrmdir($pathname)
     {
-        if (($dir = @opendir($pathname)) === false) return false;
+        if (($dir = @opendir($pathname)) === false) {
+            return false;
+        }
 
         while (($file = readdir($dir)) !== false) {
             if (($file != '.') && ($file != '..')) {
                 $full = $pathname . DIRECTORY_SEPARATOR . $file;
                 if (is_dir($full)) {
-                    $this->rrmdir($full);
+                    static::rrmdir($full);
                 } else {
                     @unlink($full);
                 }

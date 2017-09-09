@@ -8,7 +8,6 @@ use LireinCore\ImgCache\IImage;
 
 /**
  * Scale image
- * Масштабирует изображение с сохранением пропорций так, чтобы ни одна из сторон не была больше (меньше) указанных значений
  */
 class Scale implements IEffect
 {
@@ -40,7 +39,7 @@ class Scale implements IEffect
      * @param string $width for example: 100px | 20% | auto
      * @param string $height for example: 100px | 20% | auto
      * @param string $direct for example: up | down
-     * @param bool|false $allow_fit увеличивать (уменьшать) изображение до максимального (минимального), если оно меньше (больше)
+     * @param bool|false $allow_fit decrease if image is greater or increase if image is less
      */
     public function __construct($width, $height, $direct = 'up', $allow_fit = false)
     {
@@ -71,11 +70,11 @@ class Scale implements IEffect
     }
 
     /**
-     * Масштабирует изображение так, чтобы ни одна из сторон не была больше указанных значений
      * @param IImage $img
      * @param string $width for example: 100 | auto
      * @param string $height for example: 100 | auto
-     * @param bool|false $allow_increase увеличивать изображение до максимального, если оно меньше
+     * @param bool|false $allow_increase increase if image is less
+     *
      * @return $this
      */
     private function scaleUp(IImage $img, $width, $height, $allow_increase = false)
@@ -110,11 +109,11 @@ class Scale implements IEffect
     }
 
     /**
-     * Масштабирует изображение так, чтобы ни одна из сторон не была меньше указанных значений
      * @param IImage $img
      * @param string $width for example: 100 | auto
      * @param string $height for example: 100 | auto
-     * @param bool|false $allow_decrease уменьшать изображение до минимального, если оно больше
+     * @param bool|false $allow_decrease decrease if image is greater
+     *
      * @return $this
      */
     private function scaleDown(IImage $img, $width, $height, $allow_decrease = false)

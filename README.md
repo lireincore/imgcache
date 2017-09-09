@@ -75,11 +75,12 @@ $config = [
     //(default: \LireinCore\ImgCache\Image)
     'image' => '\Foo\Bar\MyImageClass',
     
-    //register custom effects
+    //register custom effects or override default effects
     //(default effects: crop, resize, scale, rotate, overlay, flip, fit, blur, gamma, grayscale, negative)
     'effects' => [
         //effect name => class (which implements \LireinCore\ImgCache\IEffect)
-        'myeffect' => '\Foo\Bar\MyEffect'
+        'myeffect1' => '\Foo\Bar\MyEffect1'
+        'myeffect2' => '\Foo\Bar\MyEffect2'
     ],
     
     //presets list
@@ -103,7 +104,7 @@ $config = [
                 ],
             ],
             
-            //you can override some of the options for this preset
+            //you can override certain options for this preset
             
             //graphic library for preset 'origin'
             'driver' => 'gd',
@@ -257,12 +258,6 @@ $thumbRelUrl = $imgcache->url('content_preview', 'blog/image.jpg');
 //get thumb absolute url for image '{srcdir}/news/image.jpg' (preset 'test')
 $thumbAbsUrl = $imgcache->url('test', 'news/image.jpg', true);
 //$thumbAbsUrl: '{baseurl}/thumbs/presets/test/news/image.jpg'
-
-//register custom effect
-$imgcache->registerEffect('effectName', '\My\Effects\EffectClass');
-
-//unregister effect
-$imgcache->unregisterEffect('effectName');
 
 //clear all file thumbs ($path should be specified as path() and url())
 $imgcache->clearFileThumbs($path);

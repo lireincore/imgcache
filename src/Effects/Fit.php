@@ -57,7 +57,7 @@ class Fit implements IEffect
      * @param string $height for example: 100px | 20%
      * @param string $bgcolor for example: '#fff' or '#ffffff' - hex | '50,50,50' - rgb | '50,50,50,50' - cmyk
      * @param int $bgtransparency for example: 0
-     * @param bool|false $allow_increase увеличивать изображение до максимального, если оно меньше
+     * @param bool|false $allow_increase increase if image is less
      */
     public function __construct($offset_x, $offset_y, $width, $height, $bgcolor = '#fff', $bgtransparency = 0, $allow_increase = false)
     {
