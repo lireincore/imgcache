@@ -12,12 +12,12 @@ Also you can use a special extension [lireincore/yii2-imgcache](https://github.c
 
 ## Install
 
-Add the `"lireincore/imgcache": "dev-master"` package to your `require` section in the `composer.json` file
+Add the `"lireincore/imgcache": "~0.1.0"` package to your `require` section in the `composer.json` file
 
 or
 
 ``` bash
-$ php composer.phar require lireincore/imgcache dev-master
+$ php composer.phar require lireincore/imgcache
 ```
 
 ## Usage
