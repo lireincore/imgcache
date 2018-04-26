@@ -1,6 +1,6 @@
 {
     "name": "lireincore/imgcache",
-    "description": "Image effect, thumb and cache. Similar to imgcache in Drupal.",
+    "description": "Image cache",
     "type": "library",
     "keywords": ["image", "cache", "thumb", "effect", "resize", "filter", "action"],
     "homepage": "https://github.com/lireincore/imgcache",
@@ -12,12 +12,11 @@
     "authors": [
         {
             "name": "lirein",
-            "email": "lirein@inbox.ru"
+            "email": "lireincore@gmail.com"
         }
     ],
     "require": {
-        "php": ">=5.4",
-        "imagine/imagine": "~0.6.0"
+        "lireincore/image": "~0.1.0"
     },
     "autoload": {
         "psr-4": {
