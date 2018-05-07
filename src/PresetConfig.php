@@ -154,7 +154,7 @@ class PresetConfig extends BaseConfig
      */
     public function getConvertMap()
     {
-        return $this->_convertMap + $this->_config->getConvertMap() + static::DEFAULT_CONVERT_MAP;
+        return $this->_convertMap + $this->_config->getConvertMap() + $this->_defaultConvertMap;
     }
 
     /**

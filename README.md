@@ -6,7 +6,7 @@
 
 ## About
 
-Image cache. Adds caching capabilities to the package [lireincore/image](https://github.com/lireincore/image)
+Adds caching capabilities to the package [lireincore/image](https://github.com/lireincore/image)
 
 Also, you can use a special extension [lireincore/yii2-imgcache](https://github.com/lireincore/yii2-imgcache) that integrates this package with Yii2 framework.
 
@@ -21,8 +21,6 @@ $ php composer.phar require lireincore/imgcache
 ```
 
 ## Usage
-
-### ImgCache
 
 ```php
 use LireinCore\ImgCache\ImgCache;
@@ -74,9 +72,9 @@ $config = [
     //define custom image class for all presets (which implements \LireinCore\Image\ImageInterface)
     //(default: \LireinCore\Image\Image)
     'image_class' => '\Foo\Bar\MyImageClass',
-    
+
     //register custom effects or override default effects
-    //(default effects: crop, resize, scale_up, scale_down, scale, rotate, overlay, flip, fit, blur, gamma, grayscale, negative)
+    //(default effects: crop, cover, resize, scale_up, scale_down, scale, rotate, overlay, flip, fit, blur, gamma, grayscale, negative, text)
     'effects_map' => [
         //effect => class (which implements \LireinCore\Image\EffectInterface)
         'myeffect1' => '\Foo\Bar\MyEffect1',
@@ -84,7 +82,7 @@ $config = [
     ],
 
     //register custom postprocessors or override default postprocessors
-    //(default postprocessors: jpegoptim, optipng)
+    //(default postprocessors: jpegoptim, optipng, pngquant)
     'postprocessors_map' => [
         //postprocessor => class (which implements \LireinCore\Image\PostProcessorInterface)
         'my_postprocessor1' => '\Foo\Bar\MyPostProcessor1',

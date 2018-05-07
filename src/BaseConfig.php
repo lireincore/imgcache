@@ -15,17 +15,6 @@ abstract class BaseConfig
 
     const DEFAULT_PNG_COMPRESSION_FILTER = 5;
 
-    const DEFAULT_CONVERT_MAP = [
-        'jpeg' => 'jpeg',
-        'png'  => 'png',
-        'gif'  => 'gif',
-        'wbmp' => 'wbmp',
-        'xbm'  => 'xbm',
-        '*'    => 'png'
-    ];
-
-    const CONVERT_DESTINATION_FORMATS = ['jpeg', 'png', 'gif', 'wbmp', 'xbm'];
-
     const DEFAULT_PROCESS_PLUG = false;
 
     /**
@@ -99,6 +88,23 @@ abstract class BaseConfig
      * @var array
      */
     protected $_postProcessorsConfig = [];
+
+    /**
+     * @var array
+     */
+    protected $_defaultConvertMap = [
+        'jpeg' => 'jpeg',
+        'png'  => 'png',
+        'gif'  => 'gif',
+        'wbmp' => 'wbmp',
+        'xbm'  => 'xbm',
+        '*'    => 'png'
+    ];
+
+    /**
+     * @var array
+     */
+    protected $_convertDestinationFormats = ['jpeg', 'png', 'gif', 'wbmp', 'xbm'];
 
     /**
      * BaseConfig constructor.
@@ -217,11 +223,17 @@ abstract class BaseConfig
      */
     public function setDestDir($destDir)
     {
-        if (is_dir($destDir)) {
-            $this->_destDir = rtrim($destDir, "\\/");
-        } else {
-            throw new ConfigException("Destination directory {$destDir} not found");
+        $destDir = rtrim($destDir, "\\/");
+
+        if (!is_dir($destDir)) {
+            try {
+                ImageHelper::rmkdir($destDir);
+            } catch (\RuntimeException $e) {
+                throw new ConfigException("Destination directory {$destDir} does not exist", $e->getCode(), $e);
+            }
         }
+
+        $this->_destDir = $destDir;
     }
 
     /**
@@ -361,7 +373,7 @@ abstract class BaseConfig
         $formats = ImageHelper::getFormats();
 
         foreach ($convertMap as $srcStr => $dest) {
-            if (in_array($dest, static::CONVERT_DESTINATION_FORMATS, true)) {
+            if (in_array($dest, $this->_convertDestinationFormats, true)) {
                 foreach (explode(',', $srcStr) as $src) {
                     if ($src === '*' || isset($formats[$src])) {
                         $this->_convertMap[$src] = $dest;

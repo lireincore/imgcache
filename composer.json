@@ -2,7 +2,7 @@
     "name": "lireincore/imgcache",
     "description": "Image cache",
     "type": "library",
-    "keywords": ["image", "cache", "thumb", "effect", "resize", "filter", "action"],
+    "keywords": ["image", "cache", "preset", "thumb", "effect", "resize"],
     "homepage": "https://github.com/lireincore/imgcache",
     "license": "MIT",
     "support": {

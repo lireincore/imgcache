@@ -6,7 +6,20 @@ use LireinCore\ImgCache\Exception\ConfigException;
 
 class Config extends BaseConfig
 {
-    const DEFAULT_EFFECTS = [
+    /**
+     * @var string[] effects map
+     *
+     * ['effect' => 'class']
+     *
+     * For example,
+     * ```php
+     * [
+     *     'my_effect1' => '\Foo\Bar\MyEffect1',
+     *     'my_effect2' => '\Foo\Bar\MyEffect2'
+     * ]
+     * ```
+     */
+    protected $_effectsMap = [
         'flip'       => '\LireinCore\Image\Effects\Flip',
         'rotate'     => '\LireinCore\Image\Effects\Rotate',
         'resize'     => '\LireinCore\Image\Effects\Resize',
@@ -24,28 +37,6 @@ class Config extends BaseConfig
         'text'       => '\LireinCore\Image\Effects\Text'
     ];
 
-    const DEFAULT_POSTPROCESSORS = [
-        'jpegoptim'  => '\LireinCore\Image\PostProcessors\JpegOptim',
-        'optipng'    => '\LireinCore\Image\PostProcessors\OptiPng',
-        //'mozjpeg'    => '\LireinCore\Image\PostProcessors\MozJpeg',
-        'pngquant'   => '\LireinCore\Image\PostProcessors\PngQuant',
-    ];
-
-    /**
-     * @var string[] effects map
-     *
-     * ['effect' => 'class']
-     *
-     * For example,
-     * ```php
-     * [
-     *     'my_effect1' => '\Foo\Bar\MyEffect1',
-     *     'my_effect2' => '\Foo\Bar\MyEffect2'
-     * ]
-     * ```
-     */
-    protected $_effectsMap = self::DEFAULT_EFFECTS;
-
     /**
      * @var string[] postprocessors map
      *
@@ -59,7 +50,12 @@ class Config extends BaseConfig
      * ]
      * ```
      */
-    protected $_postProcessorsMap = self::DEFAULT_POSTPROCESSORS;
+    protected $_postProcessorsMap = [
+        'jpegoptim'  => '\LireinCore\Image\PostProcessors\JpegOptim',
+        'optipng'    => '\LireinCore\Image\PostProcessors\OptiPng',
+        //'mozjpeg'    => '\LireinCore\Image\PostProcessors\MozJpeg',
+        'pngquant'   => '\LireinCore\Image\PostProcessors\PngQuant',
+    ];
 
     /**
      * @var PresetConfig[] presets list
