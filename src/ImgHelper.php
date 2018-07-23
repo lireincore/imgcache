@@ -3,6 +3,7 @@
 namespace LireinCore\ImgCache;
 
 use LireinCore\Image\ImageInterface;
+use LireinCore\Image\ImageHelper;
 
 class ImgHelper
 {
@@ -22,6 +23,22 @@ class ImgHelper
             default:
                 return ImageInterface::DRIVER_DEFAULT;
         }
+    }
+
+    /**
+     * @return string|null
+     */
+    public static function getAvailableDriver()
+    {
+        if (ImageHelper::checkIsImagickAvailable(ImageInterface::MIN_REQUIRED_IM_VER)) {
+            return 'imagick';
+        } elseif (ImageHelper::checkIsGDAvailable(ImageInterface::MIN_REQUIRED_GD_VER)) {
+            return 'gd';
+        } elseif (ImageHelper::checkIsGmagickAvailable(ImageInterface::MIN_REQUIRED_GM_VER)) {
+            return 'gmagick';
+        }
+
+        return null;
     }
 
     /**

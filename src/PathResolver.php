@@ -89,15 +89,18 @@ class PathResolver
         $originalFormat = ImageHelper::getFormatByExt($originalExt);
         $format = $this->getConvertedFormat($presetName, $originalFormat);
         $ext = ImageHelper::getExtByFormat($format);
-
         $subPath = "{$destInfo['filename']}.{$ext}";
+        $presetConfig = $this->_config->getPresetConfig($presetName);
+        $hash = $presetConfig->getHash();
+        $hashedPresetName = "{$presetName}_{$hash}";
+
         if ($isPlug) {
-            $subPath = 'plugs' . DIRECTORY_SEPARATOR . $presetName . DIRECTORY_SEPARATOR . $subPath;
+            $subPath = implode(DIRECTORY_SEPARATOR, ['plugs', $hashedPresetName, $subPath]);
         } else {
             if ($destInfo['dirname'] !== '.') {
                 $subPath = $destInfo['dirname'] . DIRECTORY_SEPARATOR . $subPath;
             }
-            $subPath = 'presets' . DIRECTORY_SEPARATOR . $presetName . DIRECTORY_SEPARATOR . $subPath;
+            $subPath = implode(DIRECTORY_SEPARATOR, ['presets', $hashedPresetName, $subPath]);
         }
 
         $data = [

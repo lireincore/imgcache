@@ -2,10 +2,89 @@
 
 namespace LireinCore\ImgCache;
 
+use LireinCore\Image\ImageHelper;
+use LireinCore\Image\ImageInterface;
 use LireinCore\ImgCache\Exception\ConfigException;
 
-class PresetConfig extends BaseConfig
+class PresetConfig
 {
+    /**
+     * @var string graphic library for all presets: `imagick`, `gd`, `gmagick`
+     * (by default, tries to use: imagick->gd->gmagick)
+     */
+    protected $_driver;
+
+    /**
+     * @var string image class for all presets (which implements \LireinCore\Image\ImageInterface)
+     */
+    protected $_imageClass;
+
+    /**
+     * @var string original images source directory for all presets
+     */
+    protected $_srcDir;
+
+    /**
+     * @var string thumbs destination directory for all presets
+     * (to access the thumbs from the web they should be in a directory accessible from the web)
+     */
+    protected $_destDir;
+
+    /**
+     * @var string web directory for all presets
+     */
+    protected $_webDir;
+
+    /**
+     * @var string base url for all presets
+     */
+    protected $_baseUrl;
+
+    /**
+     * @var int quality of save jpeg images for all presets: 0-100
+     */
+    protected $_jpegQuality;
+
+    /**
+     * @var int compression level of save png images for all presets: 0-9
+     */
+    protected $_pngCompressionLevel;
+
+    /**
+     * @var int compression filter of save png images for all presets: 0-9
+     */
+    protected $_pngCompressionFilter;
+
+    /**
+     * @var array formats convert map for all presets
+     */
+    protected $_convertMap = [];
+
+    /**
+     * @var string absolute path to plug for all presets (used if original image is not available)
+     */
+    protected $_plugPath;
+
+    /**
+     * @var bool apply preset effects and postprocessors to plug?
+     */
+    protected $_processPlug;
+
+    /**
+     * @var string url to get the plug from a third-party service (used if original image is not available)
+     */
+    protected $_plugUrl;
+
+    /**
+     * @var array
+     */
+    protected $_postProcessorsConfig = [];
+
+    /**
+     * @var array
+     */
+    protected $_effectsConfig = [];
+
     /**
      * @var Config
      */
@@ -14,33 +93,83 @@ class PresetConfig extends BaseConfig
     /**
      * @var array
      */
-    protected $_effectsConfig = [];
+    protected $_hashData;
 
     /**
-     * @var array
+     * @var string
      */
-    protected $_postProcessorsConfig = [];
+    protected $_hash;
 
     /**
      * PresetConfig constructor.
-
-     * @param Config $config
-     * @param array $presetConfig
+     *
+     * @param Config $baseConfig
+     * @param array $config
      * @throws ConfigException
      */
-    public function __construct(Config $config, $presetConfig)
+    public function __construct(Config $baseConfig, $config)
     {
-        parent::__construct($presetConfig);
+        $this->_config = $baseConfig;
 
-        $this->_config = $config;
+        if (!empty($config['driver'])) {
+            $this->setDriver($config['driver']);
+        }
 
-        if (isset($presetConfig['effects'])) {
-            if (is_array($presetConfig['effects'])) {
-                foreach ($presetConfig['effects'] as $effectConfig) {
+        if (!empty($config['image_class'])) {
+            $this->setImageClass($config['image_class']);
+        }
+
+        if (!empty($config['srcdir'])) {
+            $this->setSrcDir($config['srcdir']);
+        }
+
+        if (!empty($config['destdir'])) {
+            $this->setDestDir($config['destdir']);
+        }
+
+        if (!empty($config['webdir'])) {
+            $this->setWebDir($config['webdir']);
+        };
+
+        if (!empty($config['baseurl'])) {
+            $this->setBaseUrl($config['baseurl']);
+        }
+
+        if (isset($config['jpeg_quality'])) {
+            $this->setJpegQuality($config['jpeg_quality']);
+        }
+
+        if (isset($config['png_compression_level'])) {
+            $this->setPngCompressionLevel($config['png_compression_level']);
+        }
+
+        if (isset($config['png_compression_filter'])) {
+            $this->setPngCompressionFilter($config['png_compression_filter']);
+        }
+
+        if (isset($config['convert_map'])) {
+            $this->setConvertMap($config['convert_map']);
+        }
+
+        if (!empty($config['plug']['path'])) {
+            $this->setPlugPath($config['plug']['path']);
+        }
+
+        if (isset($config['plug']['process'])) {
+            $this->setProcessPlug($config['plug']['process']);
+        }
+
+        if (!empty($config['plug']['url'])) {
+            $this->setPlugUrl($config['plug']['url']);
+        }
+
+        if (isset($config['effects'])) {
+            if (is_array($config['effects'])) {
+                foreach ($config['effects'] as $effectConfig) {
                     if (!isset($effectConfig['type'])) {
                         throw new ConfigException("Incorrect config format. Effect type not specified");
                     }
-                    $class = $this->_config->getEffectClassName($effectConfig['type']);
+                    $class = $baseConfig->getEffectClassName($effectConfig['type']);
                     if (null === $class) {
                         throw new ConfigException("Incorrect config format. Unknown effect type `{$effectConfig['type']}`");
                     }
@@ -51,13 +180,13 @@ class PresetConfig extends BaseConfig
             }
         }
 
-        if (isset($presetConfig['postprocessors'])) {
-            if (is_array($presetConfig['postprocessors'])) {
-                foreach ($presetConfig['postprocessors'] as $postProcessorConfig) {
+        if (isset($config['postprocessors'])) {
+            if (is_array($config['postprocessors'])) {
+                foreach ($config['postprocessors'] as $postProcessorConfig) {
                     if (!isset($postProcessorConfig['type'])) {
                         throw new ConfigException("Incorrect config format. Postprocessor type not specified");
                     }
-                    $class = $this->_config->getPostProcessorClassName($postProcessorConfig['type']);
+                    $class = $baseConfig->getPostProcessorClassName($postProcessorConfig['type']);
                     if (null === $class) {
                         throw new ConfigException("Incorrect config format. Unknown postprocessor type `{$postProcessorConfig['type']}`");
                     }
@@ -67,30 +196,64 @@ class PresetConfig extends BaseConfig
                 throw new ConfigException('Incorrect config format');
             }
         }
+
+        $this->_hashData['driver'] = $this->getDriver();
+        $this->_hashData['image_class'] = $this->getImageClass();
+        $this->_hashData['jpeg_quality'] = $this->getJpegQuality();
+        $this->_hashData['png_compression_level'] = $this->getPngCompressionLevel();
+        $this->_hashData['png_compression_filter'] = $this->getPngCompressionFilter();
+        $this->_hashData['effects_map'] = $baseConfig->getEffectsMap();
+        $this->_hashData['postprocessors_map'] = $baseConfig->getPostProcessorsMap();
+
+        if ($this->hasEffects()) {
+            $this->_hashData['effects_config'] = $this->getEffectsConfig();
+        }
+
+        if ($this->hasPostProcessors()) {
+            $this->_hashData['postprocessors_config'] = $this->getPostProcessorsConfig();
+        } elseif ($baseConfig->hasPostProcessors()) {
+            $this->_hashData['postprocessors_config'] = $baseConfig->getPostProcessorsConfig();
+        }
+
+        $this->setHash($this->_hashData);
     }
 
     /**
-     * @return bool
+     * @param string $driver
+     * @throws ConfigException
      */
-    public function hasEffects()
+    public function setDriver($driver)
     {
-        return !empty($this->_effectsConfig);
+        if (in_array($driver, ['imagick', 'gd', 'gmagick'], true)) {
+            $this->_driver = $driver;
+        } else {
+            throw new ConfigException("Incorrect driver value. Should be 'gd', 'imagick' or 'gmagick'");
+        }
     }
 
     /**
-     * @return array
-     */
-    public function getEffectsConfig()
-    {
-        return $this->_effectsConfig;
-    }
-
-    /**
-     * @return null|string
+     * @return string
      */
     public function getDriver()
     {
         return $this->_driver !== null ? $this->_driver : $this->_config->getDriver();
+    }
+
+    /**
+     * @param null|string $srcDir
+     * @throws ConfigException
+     */
+    public function setSrcDir($srcDir)
+    {
+        if ($srcDir === null) {
+            $this->_srcDir = null;
+        } else {
+            if (is_dir($srcDir)) {
+                $this->_srcDir = rtrim($srcDir, "\\/");
+            } else {
+                throw new ConfigException("Source directory {$srcDir} not found");
+            }
+        }
     }
 
     /**
@@ -102,11 +265,47 @@ class PresetConfig extends BaseConfig
     }
 
     /**
+     * @param string $destDir
+     * @throws ConfigException
+     */
+    public function setDestDir($destDir)
+    {
+        $destDir = rtrim($destDir, "\\/");
+
+        if (!is_dir($destDir)) {
+            try {
+                ImageHelper::rmkdir($destDir);
+            } catch (\RuntimeException $e) {
+                throw new ConfigException("Destination directory {$destDir} does not exist", $e->getCode(), $e);
+            }
+        }
+
+        $this->_destDir = $destDir;
+    }
+
+    /**
      * @return string
      */
     public function getDestDir()
     {
         return $this->_destDir !== null ? $this->_destDir : $this->_config->getDestDir();
+    }
+
+    /**
+     * @param null|string $webDir
+     * @throws ConfigException
+     */
+    public function setWebDir($webDir)
+    {
+        if ($webDir === null) {
+            $this->_webDir = null;
+        } else {
+            if (is_dir($webDir)) {
+                $this->_webDir = $webDir;
+            } else {
+                throw new ConfigException("Web directory {$webDir} not found");
+            }
+        }
     }
 
     /**
@@ -118,11 +317,33 @@ class PresetConfig extends BaseConfig
     }
 
     /**
+     * @param null|string $baseUrl
+     */
+    public function setBaseUrl($baseUrl)
+    {
+        $this->_baseUrl = $baseUrl;
+    }
+
+    /**
      * @return null|string
      */
     public function getBaseUrl()
     {
         return $this->_baseUrl !== null ? $this->_baseUrl : $this->_config->getBaseUrl();
+    }
+
+    /**
+     * @param int $jpegQuality
+     * @throws ConfigException
+     */
+    public function setJpegQuality($jpegQuality)
+    {
+        $value = (int)$jpegQuality;
+        if ($value < 0 || $value > 100) {
+            throw new ConfigException("Incorrect jpeg_quality value");
+        } else {
+            $this->_jpegQuality = $value;
+        }
     }
 
     /**
@@ -142,6 +363,34 @@ class PresetConfig extends BaseConfig
     }
 
     /**
+     * @param int $pngCompressionLevel
+     * @throws ConfigException
+     */
+    public function setPngCompressionLevel($pngCompressionLevel)
+    {
+        $value = (int)$pngCompressionLevel;
+        if ($value < 0 || $value > 9) {
+            throw new ConfigException("Incorrect png_compression_level value");
+        } else {
+            $this->_pngCompressionLevel = $value;
+        }
+    }
+
+    /**
+     * @param int $pngCompressionFilter
+     * @throws ConfigException
+     */
+    public function setPngCompressionFilter($pngCompressionFilter)
+    {
+        $value = (int)$pngCompressionFilter;
+        if ($value < 0 || $value > 9) {
+            throw new ConfigException("Incorrect png_compression_filter value");
+        } else {
+            $this->_pngCompressionFilter = $value;
+        }
+    }
+
+    /**
      * @return int
      */
     public function getPngCompressionFilter()
@@ -154,7 +403,60 @@ class PresetConfig extends BaseConfig
      */
     public function getConvertMap()
     {
-        return $this->_convertMap + $this->_config->getConvertMap() + $this->_defaultConvertMap;
+        return $this->_convertMap + $this->_config->getConvertMap();
+    }
+
+    /**
+     * @param array $convertMap
+     *
+     * ['source formats' => 'destination format']
+     *
+     * For example,
+     * ```php
+     * [
+     *     'gif,wbmp' => 'png', //gif and wbmp to png
+     *     '*' => 'jpeg' //all others to jpeg
+     * ]
+     * ```
+     *
+     * supported formats for destination images: jpeg, png, gif, wbmp, xbm
+     *
+     * @throws ConfigException
+     */
+    public function setConvertMap($convertMap)
+    {
+        $formats = ImageHelper::getFormats();
+
+        foreach ($convertMap as $srcStr => $dest) {
+            if (in_array($dest, ImageInterface::SUPPORTED_DESTINATION_FORMATS, true)) {
+                foreach (explode(',', $srcStr) as $src) {
+                    if ($src === '*' || isset($formats[$src])) {
+                        $this->_convertMap[$src] = $dest;
+                    } else {
+                        throw new ConfigException("Incorrect convert value. Unsupported source image format {$src}");
+                    }
+                }
+            } else {
+                throw new ConfigException("Incorrect convert value. Unsupported destination image format {$dest}");
+            }
+        }
+    }
+
+    /**
+     * @param null|string $plugPath
+     * @throws ConfigException
+     */
+    public function setPlugPath($plugPath)
+    {
+        if ($plugPath === null) {
+            $this->_plugPath = null;
+        } else {
+            if (is_file($plugPath)) {
+                $this->_plugPath = $plugPath;
+            } else {
+                throw new ConfigException("Plug file {$plugPath} not found");
+            }
+        }
     }
 
     /**
@@ -171,11 +473,27 @@ class PresetConfig extends BaseConfig
     }
 
     /**
+     * @param bool $processPlug
+     */
+    public function setProcessPlug($processPlug)
+    {
+        $this->_processPlug = (bool)$processPlug;
+    }
+
+    /**
      * @return bool
      */
     public function getProcessPlug()
     {
         return $this->_processPlug !== null ? $this->_processPlug : $this->_config->getProcessPlug();
+    }
+
+    /**
+     * @param null|string $plugUrl
+     */
+    public function setPlugUrl($plugUrl)
+    {
+        $this->_plugUrl = $plugUrl;
     }
 
     /**
@@ -192,10 +510,76 @@ class PresetConfig extends BaseConfig
     }
 
     /**
+     * @param string $imageClass
+     * @throws ConfigException
+     */
+    public function setImageClass($imageClass)
+    {
+        if (class_exists($imageClass)) {
+            $interfaces = class_implements($imageClass);
+            if (in_array('LireinCore\Image\ImageInterface', $interfaces, true)) {
+                $this->_imageClass = $imageClass;
+            } else {
+                throw new ConfigException("Class {$imageClass} don't implement interface \\LireinCore\\Image\\ImageInterface");
+            }
+        } else {
+            throw new ConfigException("Class {$imageClass} not found");
+        }
+    }
+
+    /**
      * @return string
      */
     public function getImageClass()
     {
         return $this->_imageClass !== null ? $this->_imageClass : $this->_config->getImageClass();
+    }
+
+    /**
+     * @return bool
+     */
+    public function hasPostProcessors()
+    {
+        return !empty($this->_postProcessorsConfig);
+    }
+
+    /**
+     * @return array
+     */
+    public function getPostProcessorsConfig()
+    {
+        return $this->_postProcessorsConfig;
+    }
+
+    /**
+     * @return bool
+     */
+    public function hasEffects()
+    {
+        return !empty($this->_effectsConfig);
+    }
+
+    /**
+     * @return array
+     */
+    public function getEffectsConfig()
+    {
+        return $this->_effectsConfig;
+    }
+
+    /**
+     * @param array $hashData
+     */
+    protected function setHash(array $hashData)
+    {
+        $this->_hash = md5(json_encode($hashData));
+    }
+
+    /**
+     * @return string
+     */
+    public function getHash()
+    {
+        return $this->_hash;
     }
 }

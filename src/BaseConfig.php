@@ -8,13 +8,9 @@ use LireinCore\ImgCache\Exception\ConfigException;
 abstract class BaseConfig
 {
     const DEFAULT_IMAGE_CLASS = '\LireinCore\Image\Image';
-
     const DEFAULT_JPEG_QUALITY = 75;
-
     const DEFAULT_PNG_COMPRESSION_LEVEL = 7;
-
     const DEFAULT_PNG_COMPRESSION_FILTER = 5;
-
     const DEFAULT_PROCESS_PLUG = false;
 
     /**
@@ -168,24 +164,20 @@ abstract class BaseConfig
     }
 
     /**
-     * @param null|string $driver
+     * @param string $driver
      * @throws ConfigException
      */
     public function setDriver($driver)
     {
-        if ($driver === null) {
-            $this->_driver = null;
+        if (in_array($driver, ['imagick', 'gd', 'gmagick'], true)) {
+            $this->_driver = $driver;
         } else {
-            if (in_array($driver, ['imagick', 'gd', 'gmagick'], true)) {
-                $this->_driver = $driver;
-            } else {
-                throw new ConfigException("Incorrect driver value. Should be `gd`, `imagick` or `gmagick`");
-            }
+            throw new ConfigException("Incorrect driver value. Should be 'gd', 'imagick' or 'gmagick'");
         }
     }
 
     /**
-     * @return null|string
+     * @return string
      */
     public function getDriver()
     {
