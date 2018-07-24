@@ -146,18 +146,6 @@ class Config
     ];
 
     /**
-     * @var array presets config
-     */
-    protected $_presetsConfig = [];
-
-    /**
-     * @var PresetConfig[] presets list
-     *
-     * ['preset name' => 'preset config']
-     */
-    protected $_presets = [];
-
-    /**
      * Config constructor.
      *
      * @param array $config
@@ -267,14 +255,6 @@ class Config
                     }
                     $this->_postProcessorsConfig[] = $postProcessorConfig;
                 }
-            } else {
-                throw new ConfigException('Incorrect config format');
-            }
-        }
-
-        if (isset($config['presets'])) {
-            if (is_array($config['presets'])) {
-                $this->_presetsConfig = $config['presets'];
             } else {
                 throw new ConfigException('Incorrect config format');
             }
@@ -602,41 +582,6 @@ class Config
     public function getPostProcessorsConfig()
     {
         return $this->_postProcessorsConfig;
-    }
-
-    /**
-     * @param string $name
-     * @return PresetConfig
-     * @throws ConfigException
-     */
-    public function getPresetConfig($name)
-    {
-        if (!isset($this->_presets[$name])) {
-            if (isset($this->_presetsConfig[$name])) {
-                $this->_presets[$name] = new PresetConfig($this, $this->_presetsConfig[$name]);
-            } else {
-                return null;
-            }
-        }
-
-        return $this->_presets[$name];
-    }
-
-    /**
-     * @param string $name
-     * @return bool
-     */
-    public function isPreset($name)
-    {
-        return isset($this->_presetsConfig[$name]);
-    }
-
-    /**
-     * @return string[]
-     */
-    public function getPresetNames()
-    {
-        return array_keys($this->_presetsConfig);
     }
 
     /**

@@ -572,7 +572,7 @@ class PresetConfig
      */
     protected function setHash(array $hashData)
     {
-        $this->_hash = md5(json_encode($hashData));
+        $this->_hash = substr(ImgHelper::hash($hashData), -8, 8);
     }
 
     /**

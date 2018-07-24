@@ -13,6 +13,11 @@ class PathResolver
     protected $_config;
 
     /**
+     * @var PresetConfigRegistry
+     */
+    protected $presetConfigRegistry;
+
+    /**
      * @var array
      */
     protected $_data = [];
@@ -21,10 +26,12 @@ class PathResolver
      * PathResolver constructor.
      *
      * @param Config $config
+     * @param PresetConfigRegistry $presetConfigRegistry
      */
-    public function __construct(Config $config)
+    public function __construct(Config $config, PresetConfigRegistry $presetConfigRegistry)
     {
         $this->setConfig($config);
+        $this->presetConfigRegistry = $presetConfigRegistry;
     }
 
     /**
@@ -45,7 +52,7 @@ class PathResolver
      */
     public function getDestPath($presetName, $fileRelPath, $isPlug = false)
     {
-        $presetConfig = $this->_config->getPresetConfig($presetName);
+        $presetConfig = $this->getPresetConfig($presetName);
         $data = $this->getData($presetName, $fileRelPath, $isPlug);
 
         return $presetConfig->getDestDir() . DIRECTORY_SEPARATOR . $data['subpath'];
@@ -90,7 +97,7 @@ class PathResolver
         $format = $this->getConvertedFormat($presetName, $originalFormat);
         $ext = ImageHelper::getExtByFormat($format);
         $subPath = "{$destInfo['filename']}.{$ext}";
-        $presetConfig = $this->_config->getPresetConfig($presetName);
+        $presetConfig = $this->getPresetConfig($presetName);
         $hash = $presetConfig->getHash();
         $hashedPresetName = "{$presetName}_{$hash}";
 
@@ -127,7 +134,7 @@ class PathResolver
      */
     protected function getConvertedFormat($presetName, $originalFormat)
     {
-        $convertMap = $this->_config->getPresetConfig($presetName)->getConvertMap();
+        $convertMap = $this->getPresetConfig($presetName)->getConvertMap();
         if (key_exists($originalFormat, $convertMap)) {
             return $convertMap[$originalFormat];
         } elseif (key_exists('*', $convertMap)) {
@@ -135,5 +142,15 @@ class PathResolver
         } else {
             return $originalFormat;
         }
+    }
+
+    /**
+     * @param string $presetName
+     * @return PresetConfig
+     * @throws ConfigException
+     */
+    protected function getPresetConfig($presetName)
+    {
+        return $this->presetConfigRegistry->getPresetConfig($presetName);
     }
 }

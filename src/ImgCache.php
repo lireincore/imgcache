@@ -16,6 +16,11 @@ class ImgCache
     protected $_config;
 
     /**
+     * @var PresetConfigRegistry
+     */
+    protected $_presetConfigRegistry;
+
+    /**
      * @var PathResolver
      */
     protected $_pathResolver;
@@ -43,11 +48,7 @@ class ImgCache
      */
     public function __construct($config)
     {
-        if (!is_array($config)) {
-            throw new ConfigException('Incorrect config format');
-        }
-        $this->_config = new Config($config);
-        $this->_pathResolver = new PathResolver($this->getConfig());
+        $this->setConfig($config);
     }
 
     /**
@@ -59,8 +60,22 @@ class ImgCache
         if (!is_array($config)) {
             throw new ConfigException('Incorrect config format');
         }
+
         $this->_config = new Config($config);
-        $this->_pathResolver->setConfig($this->_config);
+        $namedPresetDefinitions = isset($config['presets']) ? $config['presets'] : [];
+
+        if ($this->_presetConfigRegistry) {
+            $this->_presetConfigRegistry->setConfig($this->_config, $namedPresetDefinitions);
+        } else {
+            $this->_presetConfigRegistry = new PresetConfigRegistry($this->_config, $namedPresetDefinitions);
+        }
+
+        if ($this->_pathResolver) {
+            $this->_pathResolver->setConfig($this->_config);
+        } else {
+            $this->_pathResolver = new PathResolver($this->getConfig(), $this->_presetConfigRegistry);
+        }
+
         $this->_presetsEffects = [];
         $this->_presetsPostProcessors = [];
         $this->_postProcessors = [];
@@ -75,15 +90,30 @@ class ImgCache
     }
 
     /**
-     * @param string $presetName
+     * @return PresetConfigRegistry
+     */
+    public function getPresetConfigRegistry()
+    {
+        return $this->_presetConfigRegistry;
+    }
+
+    /**
+     * @param string|array $presetDefinition preset name or dynamic preset definition
      * @param string|null $fileRelPath
      * @param bool $usePlug
      * @return null|string
      * @throws ConfigException
      */
-    public function path($presetName, $fileRelPath = null, $usePlug = true)
+    public function path($presetDefinition, $fileRelPath = null, $usePlug = true)
     {
-        if (!$this->isPreset($presetName)) {
+        if (is_string($presetDefinition)) {
+            if (!$this->isNamedPreset($presetDefinition)) {
+                return null;
+            }
+            $presetName = $presetDefinition;
+        } elseif (is_array($presetDefinition)) {
+            $presetName = $this->getPresetConfigRegistry()->addDynamicPresetDefinition($presetDefinition);
+        } else {
             return null;
         }
 
@@ -113,16 +143,16 @@ class ImgCache
     }
 
     /**
-     * @param string|null $presetName
+     * @param string|array|null $presetDefinition preset name or dynamic preset definition
      * @param string|null $fileRelPath
      * @param bool $absolute
      * @param bool $usePlug
      * @return null|string
      * @throws ConfigException
      */
-    public function url($presetName = null, $fileRelPath = null, $absolute = false, $usePlug = true)
+    public function url($presetDefinition = null, $fileRelPath = null, $absolute = false, $usePlug = true)
     {
-        if ($presetName === null) {
+        if ($presetDefinition === null) {
             if ($usePlug) {
                 $plugUrl = $this->getConfig()->getPlugUrl();
                 if ($plugUrl !== null) {
@@ -133,7 +163,14 @@ class ImgCache
             return null;
         }
 
-        if (!$this->isPreset($presetName)) {
+        if (is_string($presetDefinition)) {
+            if (!$this->isNamedPreset($presetDefinition)) {
+                return null;
+            }
+            $presetName = $presetDefinition;
+        } elseif (is_array($presetDefinition)) {
+            $presetName = $this->getPresetConfigRegistry()->addDynamicPresetDefinition($presetDefinition);
+        } else {
             return null;
         }
 
@@ -204,7 +241,7 @@ class ImgCache
      * @param string|null $presetName
      * @throws ConfigException
      */
-    public function clearFileThumbs($fileRelPath, $presetName = null)
+    /*public function clearFileThumbs($fileRelPath, $presetName = null)
     {
         $fileRelPath = ltrim($fileRelPath, "\\/");
         if ($presetName) {
@@ -216,13 +253,13 @@ class ImgCache
                 $this->clearFileThumb($fileRelPath, $presetName);
             }
         }
-    }
+    }*/
 
     /**
      * @param string|null $presetName
      * @throws ConfigException
      */
-    public function clearPlugsThumbs($presetName = null)
+    /*public function clearPlugsThumbs($presetName = null)
     {
         if ($presetName) {
             $presetConfig = $this->getPresetConfig($presetName);
@@ -231,17 +268,17 @@ class ImgCache
         else {
             ImageHelper::rrmdir($this->getConfig()->getDestDir() . DIRECTORY_SEPARATOR . 'plugs');
         }
-    }
+    }*/
 
     /**
      * @param string $presetName
      * @throws ConfigException
      */
-    public function clearPresetThumbs($presetName)
+    /*public function clearPresetThumbs($presetName)
     {
         $presetConfig = $this->getPresetConfig($presetName);
         ImageHelper::rrmdir($presetConfig->getDestDir() . DIRECTORY_SEPARATOR . 'presets' . DIRECTORY_SEPARATOR . $presetName);
-    }
+    }*/
 
     /**
      * @param string $presetName
@@ -250,16 +287,16 @@ class ImgCache
      */
     protected function getPresetConfig($presetName)
     {
-        return $this->getConfig()->getPresetConfig($presetName);
+        return $this->getPresetConfigRegistry()->getPresetConfig($presetName);
     }
 
     /**
      * @param string $presetName
      * @return bool
      */
-    protected function isPreset($presetName)
+    protected function isNamedPreset($presetName)
     {
-        return $this->getConfig()->isPreset($presetName);
+        return $this->getPresetConfigRegistry()->isNamedPreset($presetName);
     }
 
     /**
@@ -267,13 +304,13 @@ class ImgCache
      * @param string $presetName
      * @throws ConfigException
      */
-    protected function clearFileThumb($fileRelPath, $presetName)
+    /*protected function clearFileThumb($fileRelPath, $presetName)
     {
         $destPath = $this->_pathResolver->getDestPath($presetName, $fileRelPath);
         if (file_exists($destPath)) {
             unlink($destPath);
         }
-    }
+    }*/
 
     /**
      * @param string $presetName

@@ -8,6 +8,15 @@ use LireinCore\Image\ImageHelper;
 class ImgHelper
 {
     /**
+     * @param mixed $hashData
+     * @return string
+     */
+    public static function hash($hashData)
+    {
+        return md5(json_encode($hashData));
+    }
+
+    /**
      * @param null|string $driver
      * @return int
      */
