@@ -12,7 +12,7 @@ Also, you can use a special extension [lireincore/yii2-imgcache](https://github.
 
 ## Install
 
-Add the `"lireincore/imgcache": "~0.2.0"` package to your `require` section in the `composer.json` file
+Add the `"lireincore/imgcache": "~0.3.0"` package to your `require` section in the `composer.json` file
 
 or
 
@@ -69,14 +69,14 @@ $config = [
         'process' => true,
     ],
     
-    //define custom image class for all presets (which implements \LireinCore\Image\ImageInterface)
-    //(default: \LireinCore\Image\Image)
+    //define custom image class for all presets (which implements \LireinCore\Image\Manipulator interface)
+    //(default: \LireinCore\Image\Manipulators\Imagine)
     'image_class' => '\Foo\Bar\MyImageClass',
 
     //register custom effects or override default effects
     //(default effects: crop, cover, resize, scale_up, scale_down, scale, rotate, overlay, flip, fit, blur, gamma, grayscale, negative, text)
     'effects_map' => [
-        //effect => class (which implements \LireinCore\Image\EffectInterface)
+        //effect => class (which implements \LireinCore\Image\Effect interface)
         'myeffect1' => '\Foo\Bar\MyEffect1',
         'myeffect2' => '\Foo\Bar\MyEffect2'
     ],
@@ -84,7 +84,7 @@ $config = [
     //register custom postprocessors or override default postprocessors
     //(default postprocessors: jpegoptim, optipng, pngquant)
     'postprocessors_map' => [
-        //postprocessor => class (which implements \LireinCore\Image\PostProcessorInterface)
+        //postprocessor => class (which implements \LireinCore\Image\PostProcessor interface)
         'my_postprocessor1' => '\Foo\Bar\MyPostProcessor1',
         'my_postprocessor2' => '\Foo\Bar\MyPostProcessor2'
     ],
@@ -167,7 +167,7 @@ $config = [
                 'path' => '/path/to/my/project/backend/assets/plug_origin.png',
             ],
             
-            //define custom image class for preset 'origin' (which implements \LireinCore\Image\ImageInterface)
+            //define custom image class for preset 'origin' (which implements \LireinCore\Image\Manipulator interface)
             'image_class' => '\Foo\Bar\MyOriginImage',
 
             //postprocessors list for preset 'origin'
@@ -308,24 +308,24 @@ $config = [
 $imgcache = new ImgCache($config);
 
 //get thumb path for image '{srcdir}/user/image.jpg' (preset 'origin')
-$thumbPath = $imgcache->path('origin', 'user/image.jpg');
+$thumbPath = $imgcache->path('user/image.jpg', 'origin');
 //$thumbPath: '{destdir}/presets/origin/user/image.jpg'
 //if the source image is not found
 //$thumbPath: '{destdir}/plugs/origin/plug_origin.png'
 
 //get thumb relative url for image '{srcdir}/blog/image.jpg' (preset 'content_preview')
-$thumbRelUrl = $imgcache->url('content_preview', 'blog/image.jpg');
+$thumbRelUrl = $imgcache->url('blog/image.jpg', 'content_preview');
 //$thumbRelUrl: '/thumbs/presets/content_preview/blog/image.jpg'
 
 //get thumb absolute url for image '{srcdir}/news/image.jpg' (preset 'test')
-$thumbAbsUrl = $imgcache->url('test', 'news/image.jpg', true);
+$thumbAbsUrl = $imgcache->url('news/image.jpg', 'test', true);
 //$thumbAbsUrl: '{baseurl}/thumbs/presets/test/news/image.jpg'
 
-//clear all file thumbs ($path should be specified as path() and url())
-$imgcache->clearFileThumbs($path);
+//clear preset thumbs
+$imgcache->clearCache('presetName');
 
-//clear all preset thumbs
-$imgcache->clearPresetThumbs('presetName');
+//clear all presets thumbs
+$imgcache->clearCache();
 ```
 
 ## License

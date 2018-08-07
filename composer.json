@@ -16,7 +16,8 @@
         }
     ],
     "require": {
-        "lireincore/image": "~0.1.0"
+        "ext-json": "*",
+        "lireincore/image": "~0.2.0"
     },
     "autoload": {
         "psr-4": {
