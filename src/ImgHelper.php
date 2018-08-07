@@ -2,7 +2,7 @@
 
 namespace LireinCore\ImgCache;
 
-use LireinCore\Image\ImageInterface;
+use LireinCore\Image\Manipulator;
 use LireinCore\Image\ImageHelper;
 
 class ImgHelper
@@ -17,33 +17,33 @@ class ImgHelper
     }
 
     /**
-     * @param null|string $driver
+     * @param string $driver
      * @return int
      */
-    public static function getDriverCode($driver = null)
+    public static function driverCode($driver)
     {
         switch ($driver) {
             case 'gmagick':
-                return ImageInterface::DRIVER_GM;
+                return Manipulator::DRIVER_GM;
             case 'imagick':
-                return ImageInterface::DRIVER_IM;
+                return Manipulator::DRIVER_IM;
             case 'gd':
-                return ImageInterface::DRIVER_GD;
+                return Manipulator::DRIVER_GD;
             default:
-                return ImageInterface::DRIVER_DEFAULT;
+                return Manipulator::DRIVER_DEFAULT;
         }
     }
 
     /**
-     * @return string|null
+     * @return null|string
      */
-    public static function getAvailableDriver()
+    public static function availableDriver()
     {
-        if (ImageHelper::checkIsImagickAvailable(ImageInterface::MIN_REQUIRED_IM_VER)) {
+        if (ImageHelper::isImagickAvailable(Manipulator::MIN_REQUIRED_IM_VER)) {
             return 'imagick';
-        } elseif (ImageHelper::checkIsGDAvailable(ImageInterface::MIN_REQUIRED_GD_VER)) {
+        } elseif (ImageHelper::isGDAvailable(Manipulator::MIN_REQUIRED_GD_VER)) {
             return 'gd';
-        } elseif (ImageHelper::checkIsGmagickAvailable(ImageInterface::MIN_REQUIRED_GM_VER)) {
+        } elseif (ImageHelper::isGmagickAvailable(Manipulator::MIN_REQUIRED_GM_VER)) {
             return 'gmagick';
         }
 
@@ -54,13 +54,23 @@ class ImgHelper
      * @param string $class
      * @param array $params
      * @return object
+     * @throws \RuntimeException
      */
-    public static function createClassArrayAssoc($class, $params = [])
+    public static function createClassArrayAssoc($class, array $params = [])
     {
-        $realParams = [];
+        try {
+            $refClass = new \ReflectionClass($class);
+        } catch (\ReflectionException $ex) {
+            throw new \RuntimeException("Class {$class} does not exist", 0, $ex);
+        }
 
+        $realParams = [];
         if (method_exists($class, '__construct')) {
-            $refMethod = new \ReflectionMethod($class, '__construct');
+            try {
+                $refMethod = new \ReflectionMethod($class, '__construct');
+            } catch (\ReflectionException $ex) {
+                throw new \RuntimeException("Method '__construct' does not exist", 0, $ex);
+            }
 
             foreach ($refMethod->getParameters() as $i => $param) {
                 $pname = $param->getName();
@@ -72,14 +82,10 @@ class ImgHelper
                 } elseif ($param->isDefaultValueAvailable()) {
                     $realParams[] = $param->getDefaultValue();
                 } else {
-                    $title = $class . '::__construct';
-
-                    throw new \RuntimeException('Call to ' . $title . ' missing parameter nr. ' . ($i + 1) . ": '{$pname}'");
+                    throw new \RuntimeException("Call to {$class}::__construct missing parameter nr. " . ($i + 1) . ": '{$pname}'");
                 }
             }
         }
-
-        $refClass = new \ReflectionClass($class);
 
         return $refClass->newInstanceArgs($realParams);
     }

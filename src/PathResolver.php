@@ -10,7 +10,7 @@ class PathResolver
     /**
      * @var Config
      */
-    protected $_config;
+    protected $config;
 
     /**
      * @var PresetConfigRegistry
@@ -20,7 +20,7 @@ class PathResolver
     /**
      * @var array
      */
-    protected $_data = [];
+    protected $data = [];
 
     /**
      * PathResolver constructor.
@@ -30,127 +30,158 @@ class PathResolver
      */
     public function __construct(Config $config, PresetConfigRegistry $presetConfigRegistry)
     {
-        $this->setConfig($config);
+        $this->config = $config;
         $this->presetConfigRegistry = $presetConfigRegistry;
     }
 
     /**
-     * @param Config $config
-     */
-    public function setConfig(Config $config)
-    {
-        $this->_config = $config;
-        $this->_data = [];
-    }
-
-    /**
-     * @param string $presetName
-     * @param string $fileRelPath
+     * @param string $srcPath
+     * @param string $presetDefinitionHash
      * @param bool $isPlug
      * @return string
      * @throws ConfigException
      */
-    public function getDestPath($presetName, $fileRelPath, $isPlug = false)
+    public function destPath($srcPath, $presetDefinitionHash, $isPlug = false)
     {
-        $presetConfig = $this->getPresetConfig($presetName);
-        $data = $this->getData($presetName, $fileRelPath, $isPlug);
+        $data = $this->data($srcPath, $presetDefinitionHash, $isPlug);
+        $presetConfig = $this->presetConfig($presetDefinitionHash);
 
-        return $presetConfig->getDestDir() . DIRECTORY_SEPARATOR . $data['subpath'];
+        return $presetConfig->destDir() . DIRECTORY_SEPARATOR . $data['subpath'];
     }
 
     /**
-     * @param string $presetName
-     * @param string $fileRelPath
+     * @param string $srcPath
+     * @param string $presetDefinitionHash
      * @param bool $isPlug
      * @return string
      * @throws ConfigException
      */
-    public function getDestFormat($presetName, $fileRelPath, $isPlug = false)
+    public function destFormat($srcPath, $presetDefinitionHash, $isPlug = false)
     {
-        $data = $this->getData($presetName, $fileRelPath, $isPlug);
+        $data = $this->data($srcPath, $presetDefinitionHash, $isPlug);
 
         return $data['format'];
     }
 
     /**
-     * @param string $presetName
-     * @param string $fileRelPath
+     * @param string $presetDefinitionHash
+     * @return string
+     * @throws ConfigException
+     */
+    public function presetDir($presetDefinitionHash)
+    {
+        $presetConfig = $this->presetConfig($presetDefinitionHash);
+
+        return implode(DIRECTORY_SEPARATOR, [$presetConfig->destDir(), 'presets', $presetDefinitionHash]);
+    }
+
+    /**
+     * @param string $presetDefinitionHash
+     * @return string
+     * @throws ConfigException
+     */
+    public function stubDir($presetDefinitionHash)
+    {
+        $presetConfig = $this->presetConfig($presetDefinitionHash);
+
+        return implode(DIRECTORY_SEPARATOR, [$presetConfig->destDir(), 'stubs', $presetDefinitionHash]);
+    }
+
+    /**
+     * @param string $srcPath
+     * @param string $presetDefinitionHash
      * @param bool $isPlug
      * @return array
      * @throws ConfigException
      */
-    protected function getData($presetName, $fileRelPath, $isPlug = false)
+    protected function data($srcPath, $presetDefinitionHash, $isPlug = false)
     {
         if (!$isPlug) {
-            $fileRelPath = ltrim($fileRelPath, "\\/");
+            $srcPath = ltrim($srcPath, "\\/");
         }
 
-        if ($isPlug && isset($this->_data[$presetName]['plug'])) {
-            return $this->_data[$presetName]['plug'];
-        } elseif (isset($this->_data[$presetName]['main'][$fileRelPath])) {
-            return $this->_data[$presetName]['main'][$fileRelPath];
+        if ($isPlug && isset($this->data['stubs'][$presetDefinitionHash][$srcPath])) {
+            return $this->data['stubs'][$presetDefinitionHash][$srcPath];
+        } elseif (isset($this->data['presets'][$presetDefinitionHash][$srcPath])) {
+            return $this->data['presets'][$presetDefinitionHash][$srcPath];
         }
 
-        $destInfo = pathinfo($fileRelPath);
-        $originalExt = $destInfo['extension'];
-        $originalFormat = ImageHelper::getFormatByExt($originalExt);
-        $format = $this->getConvertedFormat($presetName, $originalFormat);
-        $ext = ImageHelper::getExtByFormat($format);
+        $destInfo = pathinfo($srcPath);
+        $srcExt = $destInfo['extension'];
+        $srcFormat = ImageHelper::formatByExt($srcExt);
+        $format = $this->convertedFormat($srcFormat, $presetDefinitionHash);
+        $ext = ImageHelper::extensionByFormat($format);
         $subPath = "{$destInfo['filename']}.{$ext}";
-        $presetConfig = $this->getPresetConfig($presetName);
-        $hash = $presetConfig->getHash();
-        $hashedPresetName = "{$presetName}_{$hash}";
+        $presetConfig = $this->presetConfig($presetDefinitionHash);
+        $presetHash = $presetConfig->hash();
 
         if ($isPlug) {
-            $subPath = implode(DIRECTORY_SEPARATOR, ['plugs', $hashedPresetName, $subPath]);
+            $subPath = implode(DIRECTORY_SEPARATOR, ['stubs', $presetHash, $subPath]);
         } else {
             if ($destInfo['dirname'] !== '.') {
                 $subPath = $destInfo['dirname'] . DIRECTORY_SEPARATOR . $subPath;
             }
-            $subPath = implode(DIRECTORY_SEPARATOR, ['presets', $hashedPresetName, $subPath]);
+            $subPath = implode(DIRECTORY_SEPARATOR, ['presets', $presetHash, $subPath]);
         }
 
         $data = [
             'format' => $format,
             'ext' => $ext,
-            'subpath' => $subPath,
-            'isPlug' => $isPlug,
+            'subpath' => $subPath
         ];
 
         if ($isPlug) {
-            $this->_data[$presetName]['plug'] = $data;
+            $this->data['stubs'][$presetDefinitionHash][$srcPath] = $data;
         } else {
-            $this->_data[$presetName]['main'][$fileRelPath] = $data;
+            $this->data['presets'][$presetDefinitionHash][$srcPath] = $data;
         }
 
         return $data;
     }
 
     /**
-     * @param string $presetName
-     * @param string $originalFormat
+     * @param string $srcFormat
+     * @param string $presetDefinitionHash
      * @return string
      * @throws ConfigException
      */
-    protected function getConvertedFormat($presetName, $originalFormat)
+    protected function convertedFormat($srcFormat, $presetDefinitionHash)
     {
-        $convertMap = $this->getPresetConfig($presetName)->getConvertMap();
-        if (key_exists($originalFormat, $convertMap)) {
-            return $convertMap[$originalFormat];
+        $presetConfig = $this->presetConfig($presetDefinitionHash);
+        $convertMap = $presetConfig->convertMap();
+
+        if (key_exists($srcFormat, $convertMap)) {
+            return $convertMap[$srcFormat];
         } elseif (key_exists('*', $convertMap)) {
             return $convertMap['*'];
         } else {
-            return $originalFormat;
+            return $srcFormat;
         }
     }
 
     /**
-     * @param string $presetName
+     * @return Config
+     */
+    protected function config()
+    {
+        return $this->config;
+    }
+
+    /**
+     * @return PresetConfigRegistry
+     */
+    protected function presetConfigRegistry()
+    {
+        return $this->presetConfigRegistry;
+    }
+
+    /**
+     * @param string $presetDefinitionHash
      * @return PresetConfig
      * @throws ConfigException
      */
-    protected function getPresetConfig($presetName)
+    protected function presetConfig($presetDefinitionHash)
     {
-        return $this->presetConfigRegistry->getPresetConfig($presetName);
+        return $this->presetConfigRegistry()->presetConfig($presetDefinitionHash);
     }
 }

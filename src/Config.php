@@ -3,17 +3,20 @@
 namespace LireinCore\ImgCache;
 
 use LireinCore\Image\ImageHelper;
-use LireinCore\Image\ImageInterface;
 use LireinCore\ImgCache\Exception\ConfigException;
 
 class Config
 {
-    const DEFAULT_IMAGE_CLASS = '\LireinCore\Image\Image';
+    const DEFAULT_IMAGE_CLASS = '\LireinCore\Image\Manipulators\Imagine';
     const DEFAULT_JPEG_QUALITY = 75;
     const DEFAULT_PNG_COMPRESSION_LEVEL = 7;
     const DEFAULT_PNG_COMPRESSION_FILTER = 5;
     const DEFAULT_PROCESS_PLUG = false;
-    const DEFAULT_CONVERT_MAP = [
+
+    /**
+     * @var array
+     */
+    protected $defaultConvertMap = [
         'jpeg' => 'jpeg',
         'png'  => 'png',
         'gif'  => 'gif',
@@ -26,73 +29,73 @@ class Config
      * @var string graphic library for all presets: `imagick`, `gd`, `gmagick`
      * (by default, tries to use: imagick->gd->gmagick)
      */
-    protected $_driver;
+    protected $driver;
 
     /**
-     * @var string image class for all presets (which implements \LireinCore\Image\ImageInterface)
+     * @var string image class for all presets (which implements \LireinCore\Image\Manipulator interface)
      */
-    protected $_imageClass;
+    protected $imageClass;
 
     /**
      * @var string original images source directory for all presets
      */
-    protected $_srcDir;
+    protected $srcDir;
 
     /**
      * @var string thumbs destination directory for all presets
      * (to access the thumbs from the web they should be in a directory accessible from the web)
      */
-    protected $_destDir;
+    protected $destDir;
 
     /**
      * @var string web directory for all presets
      */
-    protected $_webDir;
+    protected $webDir;
 
     /**
      * @var string base url for all presets
      */
-    protected $_baseUrl;
+    protected $baseUrl;
 
     /**
      * @var int quality of save jpeg images for all presets: 0-100
      */
-    protected $_jpegQuality;
+    protected $jpegQuality;
 
     /**
      * @var int compression level of save png images for all presets: 0-9
      */
-    protected $_pngCompressionLevel;
+    protected $pngCompressionLevel;
 
     /**
      * @var int compression filter of save png images for all presets: 0-9
      */
-    protected $_pngCompressionFilter;
+    protected $pngCompressionFilter;
 
     /**
      * @var array formats convert map for all presets
      */
-    protected $_convertMap = [];
+    protected $convertMap = [];
 
     /**
      * @var string absolute path to plug for all presets (used if original image is not available)
      */
-    protected $_plugPath;
+    protected $plugPath;
 
     /**
      * @var bool apply preset effects and postprocessors to plug?
      */
-    protected $_processPlug;
+    protected $processPlug;
 
     /**
      * @var string url to get the plug from a third-party service (used if original image is not available)
      */
-    protected $_plugUrl;
+    protected $plugUrl;
 
     /**
      * @var array
      */
-    protected $_postProcessorsConfig = [];
+    protected $postProcessorsConfig = [];
 
     /**
      * @var string[] effects map
@@ -107,7 +110,7 @@ class Config
      * ]
      * ```
      */
-    protected $_effectsMap = [
+    protected $effectsMap = [
         'flip'       => '\LireinCore\Image\Effects\Flip',
         'rotate'     => '\LireinCore\Image\Effects\Rotate',
         'resize'     => '\LireinCore\Image\Effects\Resize',
@@ -138,7 +141,7 @@ class Config
      * ]
      * ```
      */
-    protected $_postProcessorsMap = [
+    protected $postProcessorsMap = [
         'jpegoptim'  => '\LireinCore\Image\PostProcessors\JpegOptim',
         'optipng'    => '\LireinCore\Image\PostProcessors\OptiPng',
         //'mozjpeg'    => '\LireinCore\Image\PostProcessors\MozJpeg',
@@ -162,7 +165,7 @@ class Config
         if (isset($config['driver'])) {
             $this->setDriver($config['driver']);
         } else {
-            $driver = ImgHelper::getAvailableDriver();
+            $driver = ImgHelper::availableDriver();
             if ($driver === null) {
                 throw new ConfigException("No graphic libraries installed or higher versions is required. Please, install 'gd', 'imagick' or 'gmagick'");
             }
@@ -249,11 +252,11 @@ class Config
                     if (!isset($postProcessorConfig['type'])) {
                         throw new ConfigException("Incorrect config format. Postprocessor type not specified");
                     }
-                    $class = $this->getPostProcessorClassName($postProcessorConfig['type']);
+                    $class = $this->postProcessorClassName($postProcessorConfig['type']);
                     if (null === $class) {
                         throw new ConfigException("Incorrect config format. Unknown postprocessor type '{$postProcessorConfig['type']}'");
                     }
-                    $this->_postProcessorsConfig[] = $postProcessorConfig;
+                    $this->postProcessorsConfig[] = $postProcessorConfig;
                 }
             } else {
                 throw new ConfigException('Incorrect config format');
@@ -265,10 +268,10 @@ class Config
      * @param string $driver
      * @throws ConfigException
      */
-    public function setDriver($driver)
+    protected function setDriver($driver)
     {
         if (in_array($driver, ['imagick', 'gd', 'gmagick'], true)) {
-            $this->_driver = $driver;
+            $this->driver = $driver;
         } else {
             throw new ConfigException("Incorrect driver value. Should be 'gd', 'imagick' or 'gmagick'");
         }
@@ -277,22 +280,22 @@ class Config
     /**
      * @return string
      */
-    public function getDriver()
+    public function driver()
     {
-        return $this->_driver;
+        return $this->driver;
     }
 
     /**
      * @param null|string $srcDir
      * @throws ConfigException
      */
-    public function setSrcDir($srcDir)
+    protected function setSrcDir($srcDir)
     {
         if ($srcDir === null) {
-            $this->_srcDir = null;
+            $this->srcDir = null;
         } else {
             if (is_dir($srcDir)) {
-                $this->_srcDir = rtrim($srcDir, "\\/");
+                $this->srcDir = rtrim($srcDir, "\\/");
             } else {
                 throw new ConfigException("Source directory {$srcDir} not found");
             }
@@ -302,16 +305,16 @@ class Config
     /**
      * @return null|string
      */
-    public function getSrcDir()
+    public function srcDir()
     {
-        return $this->_srcDir;
+        return $this->srcDir;
     }
 
     /**
      * @param string $destDir
      * @throws ConfigException
      */
-    public function setDestDir($destDir)
+    protected function setDestDir($destDir)
     {
         $destDir = rtrim($destDir, "\\/");
 
@@ -323,28 +326,28 @@ class Config
             }
         }
 
-        $this->_destDir = $destDir;
+        $this->destDir = $destDir;
     }
 
     /**
      * @return string
      */
-    public function getDestDir()
+    public function destDir()
     {
-        return $this->_destDir;
+        return $this->destDir;
     }
 
     /**
      * @param null|string $webDir
      * @throws ConfigException
      */
-    public function setWebDir($webDir)
+    protected function setWebDir($webDir)
     {
         if ($webDir === null) {
-            $this->_webDir = null;
+            $this->webDir = null;
         } else {
             if (is_dir($webDir)) {
-                $this->_webDir = $webDir;
+                $this->webDir = $webDir;
             } else {
                 throw new ConfigException("Web directory {$webDir} not found");
             }
@@ -354,91 +357,91 @@ class Config
     /**
      * @return null|string
      */
-    public function getWebDir()
+    public function webDir()
     {
-        return $this->_webDir;
+        return $this->webDir;
     }
 
     /**
      * @param null|string $baseUrl
      */
-    public function setBaseUrl($baseUrl)
+    protected function setBaseUrl($baseUrl)
     {
-        $this->_baseUrl = $baseUrl;
+        $this->baseUrl = $baseUrl;
     }
 
     /**
      * @return null|string
      */
-    public function getBaseUrl()
+    public function baseUrl()
     {
-        return $this->_baseUrl;
+        return $this->baseUrl;
     }
 
     /**
      * @param int $jpegQuality
      * @throws ConfigException
      */
-    public function setJpegQuality($jpegQuality)
+    protected function setJpegQuality($jpegQuality)
     {
         $value = (int)$jpegQuality;
         if ($value < 0 || $value > 100) {
             throw new ConfigException("Incorrect jpeg_quality value");
         } else {
-            $this->_jpegQuality = $value;
+            $this->jpegQuality = $value;
         }
     }
 
     /**
      * @return int
      */
-    public function getJpegQuality()
+    public function jpegQuality()
     {
-        return $this->_jpegQuality;
+        return $this->jpegQuality;
     }
 
     /**
      * @param int $pngCompressionLevel
      * @throws ConfigException
      */
-    public function setPngCompressionLevel($pngCompressionLevel)
+    protected function setPngCompressionLevel($pngCompressionLevel)
     {
         $value = (int)$pngCompressionLevel;
         if ($value < 0 || $value > 9) {
             throw new ConfigException("Incorrect png_compression_level value");
         } else {
-            $this->_pngCompressionLevel = $value;
+            $this->pngCompressionLevel = $value;
         }
     }
 
     /**
      * @return int
      */
-    public function getPngCompressionLevel()
+    public function pngCompressionLevel()
     {
-        return $this->_pngCompressionLevel;
+        return $this->pngCompressionLevel;
     }
 
     /**
      * @param int $pngCompressionFilter
      * @throws ConfigException
      */
-    public function setPngCompressionFilter($pngCompressionFilter)
+    protected function setPngCompressionFilter($pngCompressionFilter)
     {
         $value = (int)$pngCompressionFilter;
         if ($value < 0 || $value > 9) {
             throw new ConfigException("Incorrect png_compression_filter value");
         } else {
-            $this->_pngCompressionFilter = $value;
+            $this->pngCompressionFilter = $value;
         }
     }
 
     /**
      * @return int
      */
-    public function getPngCompressionFilter()
+    public function pngCompressionFilter()
     {
-        return $this->_pngCompressionFilter;
+        return $this->pngCompressionFilter;
     }
 
     /**
@@ -458,15 +461,15 @@ class Config
      *
      * @throws ConfigException
      */
-    public function setConvertMap($convertMap)
+    protected function setConvertMap($convertMap)
     {
-        $formats = ImageHelper::getFormats();
+        $formats = ImageHelper::formats();
 
         foreach ($convertMap as $srcStr => $dest) {
-            if (in_array($dest, ImageInterface::SUPPORTED_DESTINATION_FORMATS, true)) {
+            if (in_array($dest, ImageHelper::supportedDestinationFormats(), true)) {
                 foreach (explode(',', $srcStr) as $src) {
                     if ($src === '*' || isset($formats[$src])) {
-                        $this->_convertMap[$src] = $dest;
+                        $this->convertMap[$src] = $dest;
                     } else {
                         throw new ConfigException("Incorrect convert value. Unsupported source image format {$src}");
                     }
@@ -480,22 +483,22 @@ class Config
     /**
      * @return array
      */
-    public function getConvertMap()
+    public function convertMap()
     {
-        return $this->_convertMap + static::DEFAULT_CONVERT_MAP;
+        return $this->convertMap + $this->defaultConvertMap;
     }
 
     /**
      * @param null|string $plugPath
      * @throws ConfigException
      */
-    public function setPlugPath($plugPath)
+    protected function setPlugPath($plugPath)
     {
         if ($plugPath === null) {
-            $this->_plugPath = null;
+            $this->plugPath = null;
         } else {
             if (is_file($plugPath)) {
-                $this->_plugPath = $plugPath;
+                $this->plugPath = $plugPath;
             } else {
                 throw new ConfigException("Plug file {$plugPath} not found");
             }
@@ -505,55 +508,55 @@ class Config
     /**
      * @return null|string
      */
-    public function getPlugPath()
+    public function plugPath()
     {
-        return $this->_plugPath;
+        return $this->plugPath;
     }
 
     /**
      * @param bool $processPlug
      */
-    public function setProcessPlug($processPlug)
+    protected function setProcessPlug($processPlug)
     {
-        $this->_processPlug = (bool)$processPlug;
+        $this->processPlug = (bool)$processPlug;
     }
 
     /**
      * @return bool
      */
-    public function getProcessPlug()
+    public function isPlugProcessed()
     {
-        return $this->_processPlug;
+        return $this->processPlug;
     }
 
     /**
      * @param null|string $plugUrl
      */
-    public function setPlugUrl($plugUrl)
+    protected function setPlugUrl($plugUrl)
     {
-        $this->_plugUrl = $plugUrl;
+        $this->plugUrl = $plugUrl;
     }
 
     /**
      * @return null|string
      */
-    public function getPlugUrl()
+    public function plugUrl()
     {
-        return $this->_plugUrl;
+        return $this->plugUrl;
     }
 
     /**
      * @param string $imageClass
      * @throws ConfigException
      */
-    public function setImageClass($imageClass)
+    protected function setImageClass($imageClass)
     {
         if (class_exists($imageClass)) {
             $interfaces = class_implements($imageClass);
-            if (in_array('LireinCore\Image\ImageInterface', $interfaces, true)) {
-                $this->_imageClass = $imageClass;
+            if (in_array('LireinCore\Image\Manipulator', $interfaces, true)) {
+                $this->imageClass = $imageClass;
             } else {
-                throw new ConfigException("Class {$imageClass} don't implement interface \\LireinCore\\Image\\ImageInterface");
+                throw new ConfigException("Class {$imageClass} don't implement interface \\LireinCore\\Image\\Manipulator");
             }
         } else {
             throw new ConfigException("Class {$imageClass} not found");
@@ -563,9 +566,9 @@ class Config
     /**
      * @return string
      */
-    public function getImageClass()
+    public function imageClass()
     {
-        return $this->_imageClass;
+        return $this->imageClass;
     }
 
     /**
@@ -573,32 +576,32 @@ class Config
      */
     public function hasPostProcessors()
     {
-        return !empty($this->_postProcessorsConfig);
+        return !empty($this->postProcessorsConfig);
     }
 
     /**
      * @return array
      */
-    public function getPostProcessorsConfig()
+    public function postProcessorsConfig()
     {
-        return $this->_postProcessorsConfig;
+        return $this->postProcessorsConfig;
     }
 
     /**
      * Register custom effects or override default effects
      *
      * @param string $type
-     * @param string $class class which implements \LireinCore\Image\EffectInterface
+     * @param string $class class which implements \LireinCore\Image\Effect interface
      * @throws ConfigException
      */
-    public function registerEffect($type, $class)
+    protected function registerEffect($type, $class)
     {
         if (class_exists($class)) {
             $interfaces = class_implements($class);
-            if (in_array('LireinCore\Image\EffectInterface', $interfaces, true)) {
-                $this->_effectsMap[$type] = $class;
+            if (in_array('LireinCore\Image\Effect', $interfaces, true)) {
+                $this->effectsMap[$type] = $class;
             } else {
-                throw new ConfigException("Class {$class} don't implement interface \\LireinCore\\Image\\EffectInterface");
+                throw new ConfigException("Class {$class} don't implement interface \\LireinCore\\Image\\Effect");
             }
         } else {
             throw new ConfigException("Class {$class} not found");
@@ -608,35 +611,35 @@ class Config
     /**
      * @return string[]
      */
-    public function getEffectsMap()
+    public function effectsMap()
     {
-        return $this->_effectsMap;
+        return $this->effectsMap;
     }
 
     /**
      * @param string $type
      * @return null|string
      */
-    public function getEffectClassName($type)
+    public function effectClassName($type)
     {
-        return isset($this->_effectsMap[$type]) ? $this->_effectsMap[$type] : null;
+        return isset($this->effectsMap[$type]) ? $this->effectsMap[$type] : null;
     }
 
     /**
      * Register custom postprocessor or override default postprocessors
      *
      * @param string $type
-     * @param string $class class which implements \LireinCore\Image\PostProcessorInterface
+     * @param string $class class which implements \LireinCore\Image\PostProcessor interface
      * @throws ConfigException
      */
-    public function registerPostProcessor($type, $class)
+    protected function registerPostProcessor($type, $class)
     {
         if (class_exists($class)) {
             $interfaces = class_implements($class);
-            if (in_array('LireinCore\Image\PostProcessorInterface', $interfaces, true)) {
-                $this->_postProcessorsMap[$type] = $class;
+            if (in_array('LireinCore\Image\PostProcessor', $interfaces, true)) {
+                $this->postProcessorsMap[$type] = $class;
             } else {
-                throw new ConfigException("Class {$class} don't implement interface \\LireinCore\\Image\\PostProcessorInterface");
+                throw new ConfigException("Class {$class} don't implement interface \\LireinCore\\Image\\PostProcessor");
             }
         } else {
             throw new ConfigException("Class {$class} not found");
@@ -646,17 +649,17 @@ class Config
     /**
      * @return string[]
      */
-    public function getPostProcessorsMap()
+    public function postProcessorsMap()
     {
-        return $this->_postProcessorsMap;
+        return $this->postProcessorsMap;
     }
 
     /**
      * @param string $type
      * @return null|string
      */
-    public function getPostProcessorClassName($type)
+    public function postProcessorClassName($type)
     {
-        return isset($this->_postProcessorsMap[$type]) ? $this->_postProcessorsMap[$type] : null;
+        return isset($this->postProcessorsMap[$type]) ? $this->postProcessorsMap[$type] : null;
     }
 }

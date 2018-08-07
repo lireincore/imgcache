@@ -12,98 +12,79 @@ class PresetConfigRegistry
     protected $config;
 
     /**
-     * @var array named preset definitions (from configuration)
+     * @var string[]
      */
-    protected $namedPresetDefinitions = [];
+    protected $nameToHashMap = [];
 
     /**
-     * @var PresetConfig[] named preset configs
+     * @var array presets definitions (from configuration and your calls)
      */
-    protected $namedPresetConfigs = [];
+    protected $presetDefinitions = [];
 
     /**
-     * @var array dynamic preset definitions (from your calls)
+     * @var PresetConfig[] presets configs
      */
-    protected $dynamicPresetDefinitions = [];
-
-    /**
-     * @var PresetConfig[] dynamic preset configs
-     */
-    protected $dynamicPresetConfigs = [];
+    protected $presetConfigs = [];
 
     /**
      * PresetConfigStorage constructor.
      *
      * @param Config $config
      * @param array $namedPresetDefinitions
-     * @throws ConfigException
      */
-    public function __construct(Config $config, $namedPresetDefinitions)
+    public function __construct(Config $config, array $namedPresetDefinitions)
     {
-        $this->setConfig($config, $namedPresetDefinitions);
-    }
-
-    /**
-     * @param Config $config
-     * @param array $namedPresetDefinitions
-     * @throws ConfigException
-     */
-    public function setConfig(Config $config, $namedPresetDefinitions)
-    {
-        if (is_array($namedPresetDefinitions)) {
-            $this->namedPresetDefinitions = $namedPresetDefinitions;
-        } else {
-            throw new ConfigException('Incorrect config format');
-        }
-
         $this->config = $config;
-
-        $this->namedPresetConfigs = [];
-        $this->dynamicPresetConfigs = [];
+        foreach ($namedPresetDefinitions as $presetName => $presetDefinition) {
+            $this->nameToHashMap[$presetName] = $this->addPresetDefinition($presetDefinition);
+        }
     }
 
     /**
      * @param array $presetDefinition
      * @return string
      */
-    public function addDynamicPresetDefinition(array $presetDefinition)
+    public function addPresetDefinition(array $presetDefinition)
     {
-        $hash = $this->presetDefinitionHash($presetDefinition);
+        $presetDefinitionHash = $this->presetDefinitionHash($presetDefinition);
 
-        $this->dynamicPresetDefinitions[$hash] = $presetDefinition;
+        $this->presetDefinitions[$presetDefinitionHash] = $presetDefinition;
 
-        return $hash;
+        return $presetDefinitionHash;
     }
 
     /**
-     * @param string $name
+     * @param string $presetDefinitionHash
      * @return PresetConfig|null
      * @throws ConfigException
      */
-    public function getPresetConfig($name)
+    public function presetConfig($presetDefinitionHash)
     {
-        if (isset($this->namedPresetConfigs[$name])) {
-            return $this->namedPresetConfigs[$name];
-        } elseif (isset($this->dynamicPresetConfigs[$name])) {
-            return $this->dynamicPresetConfigs[$name];
-        } elseif (isset($this->namedPresetDefinitions[$name])) {
-            $this->namedPresetConfigs[$name] = new PresetConfig($this->config, $this->namedPresetDefinitions[$name]);
-            return $this->namedPresetConfigs[$name];
-        } elseif (isset($this->dynamicPresetDefinitions[$name])) {
-            $this->dynamicPresetConfigs[$name] = new PresetConfig($this->config, $this->dynamicPresetDefinitions[$name]);
-            return $this->dynamicPresetConfigs[$name];
+        if (isset($this->presetConfigs[$presetDefinitionHash])) {
+            return $this->presetConfigs[$presetDefinitionHash];
+        } elseif (isset($this->presetDefinitions[$presetDefinitionHash])) {
+            $this->presetConfigs[$presetDefinitionHash] = new PresetConfig($this->config, $this->presetDefinitions[$presetDefinitionHash]);
+            return $this->presetConfigs[$presetDefinitionHash];
         } else {
             return null;
         }
     }
 
     /**
-     * @param string $name
-     * @return bool
+     * @return string[]
      */
-    public function isNamedPreset($name)
+    public function presetDefinitionHashList()
     {
-        return isset($this->namedPresetDefinitions[$name]);
+        return array_keys($this->presetDefinitions);
+    }
+
+    /**
+     * @param string $presetName
+     * @return null|string
+     */
+    public function hashByName($presetName)
+    {
+        return isset($this->nameToHashMap[$presetName]) ? $this->nameToHashMap[$presetName] : null;
     }
 
     /**
@@ -112,6 +93,35 @@ class PresetConfigRegistry
      */
     protected function presetDefinitionHash(array $presetDefinition)
     {
-        return '_' . substr(ImgHelper::hash($presetDefinition), 0, 8);
+        if (!empty($presetDefinition['plug'])) {
+            ksort($presetDefinition['plug']);
+        }
+
+        if (!empty($presetDefinition['effects'])) {
+            $presetDefinition['effects'] = $this->sortEffectsOrPostProcessorsConfig($presetDefinition['effects']);
+        }
+
+        if (!empty($presetDefinition['postprocessors'])) {
+            $presetDefinition['postprocessors'] = $this->sortEffectsOrPostProcessorsConfig($presetDefinition['postprocessors']);
+        }
+
+        ksort($presetDefinition);
+
+        return ImgHelper::hash($presetDefinition);
+    }
+
+    /**
+     * @param array $configItems
+     * @return array
+     */
+    protected function sortEffectsOrPostProcessorsConfig(array $configItems)
+    {
+        return array_map(function ($item) {
+            if (!empty($item['params'])) {
+                ksort($item['params']);
+            }
+            ksort($item);
+            return $item;
+        }, $configItems);
     }
 }

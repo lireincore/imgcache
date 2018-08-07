@@ -2,9 +2,6 @@
 
 namespace LireinCore\ImgCache;
 
-use LireinCore\Image\ImageInterface;
-use LireinCore\Image\EffectInterface;
-use LireinCore\Image\PostProcessorInterface;
 use LireinCore\Image\ImageHelper;
 use LireinCore\ImgCache\Exception\ConfigException;
 
@@ -13,32 +10,22 @@ class ImgCache
     /**
      * @var Config
      */
-    protected $_config;
+    protected $config;
 
     /**
      * @var PresetConfigRegistry
      */
-    protected $_presetConfigRegistry;
+    protected $presetConfigRegistry;
 
     /**
      * @var PathResolver
      */
-    protected $_pathResolver;
+    protected $pathResolver;
 
     /**
-     * @var array
+     * @var ImgProcessor
      */
-    protected $_presetsEffects = [];
-
-    /**
-     * @var array
-     */
-    protected $_presetsPostProcessors = [];
-
-    /**
-     * @var PostProcessorInterface[]
-     */
-    protected $_postProcessors = [];
+    protected $imgProcessor;
 
     /**
      * ImgCache constructor.
@@ -46,282 +33,260 @@ class ImgCache
      * @param array $config
      * @throws ConfigException
      */
-    public function __construct($config)
+    public function __construct(array $config)
     {
-        $this->setConfig($config);
+        $this->config = new Config($config);
+
+        $namedPresetDefinitions = isset($config['presets']) && is_array($config['presets']) ? $config['presets'] : [];
+
+        $this->presetConfigRegistry = new PresetConfigRegistry($this->config(), $namedPresetDefinitions);
+        $this->pathResolver = new PathResolver($this->config(), $this->presetConfigRegistry());
+        $this->imgProcessor = new ImgProcessor($this->config(), $this->presetConfigRegistry());
     }
 
     /**
-     * @param array $config
-     * @throws ConfigException
-     */
-    public function setConfig($config)
-    {
-        if (!is_array($config)) {
-            throw new ConfigException('Incorrect config format');
-        }
-
-        $this->_config = new Config($config);
-        $namedPresetDefinitions = isset($config['presets']) ? $config['presets'] : [];
-
-        if ($this->_presetConfigRegistry) {
-            $this->_presetConfigRegistry->setConfig($this->_config, $namedPresetDefinitions);
-        } else {
-            $this->_presetConfigRegistry = new PresetConfigRegistry($this->_config, $namedPresetDefinitions);
-        }
-
-        if ($this->_pathResolver) {
-            $this->_pathResolver->setConfig($this->_config);
-        } else {
-            $this->_pathResolver = new PathResolver($this->getConfig(), $this->_presetConfigRegistry);
-        }
-
-        $this->_presetsEffects = [];
-        $this->_presetsPostProcessors = [];
-        $this->_postProcessors = [];
-    }
-
-    /**
-     * @return Config
-     */
-    public function getConfig()
-    {
-        return $this->_config;
-    }
-
-    /**
-     * @return PresetConfigRegistry
-     */
-    public function getPresetConfigRegistry()
-    {
-        return $this->_presetConfigRegistry;
-    }
-
-    /**
-     * @param string|array $presetDefinition preset name or dynamic preset definition
-     * @param string|null $fileRelPath
-     * @param bool $usePlug
-     * @return null|string
-     * @throws ConfigException
-     */
-    public function path($presetDefinition, $fileRelPath = null, $usePlug = true)
-    {
-        if (is_string($presetDefinition)) {
-            if (!$this->isNamedPreset($presetDefinition)) {
-                return null;
-            }
-            $presetName = $presetDefinition;
-        } elseif (is_array($presetDefinition)) {
-            $presetName = $this->getPresetConfigRegistry()->addDynamicPresetDefinition($presetDefinition);
-        } else {
-            return null;
-        }
-
-        if ($fileRelPath !== null) {
-            $destPath = $this->_pathResolver->getDestPath($presetName, $fileRelPath);
-            if ($this->checkThumb($presetName, $fileRelPath, $destPath)) {
-                $path = $destPath;
-            } else {
-                $path = null;
-            }
-        } else {
-            $path = null;
-        }
-
-        if ($path === null && $usePlug) {
-            $presetConfig = $this->getPresetConfig($presetName);
-            $plugPath = $presetConfig->getPlugPath();
-            if ($plugPath !== null) {
-                $plugDestPath = $this->_pathResolver->getDestPath($presetName, $plugPath, true);
-                if ($this->checkPlug($presetName, $plugPath, $plugDestPath)) {
-                    $path = $plugDestPath;
-                }
-            }
-        }
-
-        return $path;
-    }
-
-    /**
-     * @param string|array|null $presetDefinition preset name or dynamic preset definition
-     * @param string|null $fileRelPath
+     * @param string $srcRelPath relative path to source image
+     * @param string|array $preset preset name or dynamic preset definition
      * @param bool $absolute
-     * @param bool $usePlug
-     * @return null|string
+     * @param bool $useStub
+     * @return string
      * @throws ConfigException
+     * @throws \RuntimeException
+     * @throws \InvalidArgumentException
      */
-    public function url($presetDefinition = null, $fileRelPath = null, $absolute = false, $usePlug = true)
+    public function url($srcRelPath, $preset, $absolute = false, $useStub = true)
     {
-        if ($presetDefinition === null) {
-            if ($usePlug) {
-                $plugUrl = $this->getConfig()->getPlugUrl();
-                if ($plugUrl !== null) {
-                    return $plugUrl;
+        if (!is_string($srcRelPath)) {
+            throw new \InvalidArgumentException("Аrgument 'srcRelPath' must be a string");
+        }
+
+        $presetDefinitionHash = $this->presetDefinitionHash($preset);
+        $this->checkUrlAvailability($presetDefinitionHash, $absolute);
+
+        $destPath = $this->pathResolver()->destPath($srcRelPath, $presetDefinitionHash);
+        if ($this->isWebPath($destPath, $presetDefinitionHash)) {
+            if ($this->checkThumb($srcRelPath, $presetDefinitionHash)) {
+                return $this->urlFromPath($destPath, $presetDefinitionHash, $absolute);
+            } else {
+                if ($useStub) {
+                    return $this->stubUrlByHash($presetDefinitionHash, $absolute);
+                } else {
+                    throw new \RuntimeException("Source image '{$destPath}' not found");
                 }
-            }
-
-            return null;
-        }
-
-        if (is_string($presetDefinition)) {
-            if (!$this->isNamedPreset($presetDefinition)) {
-                return null;
-            }
-            $presetName = $presetDefinition;
-        } elseif (is_array($presetDefinition)) {
-            $presetName = $this->getPresetConfigRegistry()->addDynamicPresetDefinition($presetDefinition);
-        } else {
-            return null;
-        }
-
-        $presetConfig = $this->getPresetConfig($presetName);
-        $webDir = $presetConfig->getWebDir();
-        $baseUrl = $presetConfig->getBaseUrl();
-        $plugUrl = $presetConfig->getPlugUrl();
-
-        $hasWebPlug = $usePlug && $plugUrl !== null;
-        $hasFileUrl = $webDir !== null && !($absolute && $baseUrl === null);
-
-        if (!$hasWebPlug && !$hasFileUrl) {
-            return null;
-        }
-
-        $path = null;
-        if ($hasFileUrl && $fileRelPath !== null) {
-            $destPath = $this->_pathResolver->getDestPath($presetName, $fileRelPath);
-            if ($this->isWebPath($presetName, $destPath) && $this->checkThumb($presetName, $fileRelPath, $destPath)) {
-                $path = $destPath;
-            }
-        }
-
-        if ($path === null && $usePlug) {
-            $presetPlugPath = $presetConfig->getPlugPath(true);
-            if ($hasFileUrl && $presetPlugPath !== null) {
-                $presetPlugDestPath = $this->_pathResolver->getDestPath($presetName, $presetPlugPath, true);
-                if ($this->isWebPath($presetName, $presetPlugDestPath) && $this->checkPlug($presetName, $presetPlugPath, $presetPlugDestPath)) {
-                    $path = $presetPlugDestPath;
-                }
-            }
-
-            if ($path === null) {
-                $presetPlugUrl = $presetConfig->getPlugUrl(true);
-                if ($presetPlugUrl) {
-                    return $presetPlugUrl;
-                }
-
-                if ($hasFileUrl && $presetPlugPath === null) {
-                    $plugPath = $presetConfig->getPlugPath();
-                    if ($plugPath !== null) {
-                        $plugDestPath = $this->_pathResolver->getDestPath($presetName, $plugPath, true);
-                        if ($this->isWebPath($presetName, $plugDestPath) && $this->checkPlug($presetName, $plugPath, $plugDestPath)) {
-                            $path = $plugDestPath;
-                        }
-                    }
-                }
-
-                if ($path === null) {
-                    if ($plugUrl) {
-                        return $plugUrl;
-                    }
-                }
-            }
-        }
-
-        if ($path !== null) {
-            $url = str_replace('\\', '/', substr($path, strlen($webDir)));
-
-            return $absolute ? $baseUrl . $url : $url;
-        }
-
-        return null;
-    }
-
-    /**
-     * @param string $fileRelPath
-     * @param string|null $presetName
-     * @throws ConfigException
-     */
-    /*public function clearFileThumbs($fileRelPath, $presetName = null)
-    {
-        $fileRelPath = ltrim($fileRelPath, "\\/");
-        if ($presetName) {
-            if ($this->isPreset($presetName)) {
-                $this->clearFileThumb($fileRelPath, $presetName);
             }
         } else {
-            foreach ($this->getConfig()->getPresetNames() as $presetName) {
-                $this->clearFileThumb($fileRelPath, $presetName);
+            throw new \RuntimeException("'{$destPath}' is not web accessible image");
+        }
+    }
+
+    /**
+     * @param string $srcRelPath relative path to source image
+     * @param string|array $preset preset name or dynamic preset definition
+     * @param bool $useStub
+     * @return string
+     * @throws ConfigException
+     * @throws \RuntimeException
+     * @throws \InvalidArgumentException
+     */
+    public function path($srcRelPath, $preset, $useStub = true)
+    {
+        if (!is_string($srcRelPath)) {
+            throw new \InvalidArgumentException("Аrgument 'srcRelPath' must be a string");
+        }
+
+        $presetDefinitionHash = $this->presetDefinitionHash($preset);
+        if ($this->checkThumb($srcRelPath, $presetDefinitionHash)) {
+            return $this->pathResolver()->destPath($srcRelPath, $presetDefinitionHash);
+        } else {
+            if ($useStub) {
+                return $this->stubPathByHash($presetDefinitionHash);
+            } else {
+                $path = $this->pathResolver()->destPath($srcRelPath, $presetDefinitionHash);
+                throw new \RuntimeException("Source image '{$path}' not found");
             }
         }
-    }*/
-
-    /**
-     * @param string|null $presetName
-     * @throws ConfigException
-     */
-    /*public function clearPlugsThumbs($presetName = null)
-    {
-        if ($presetName) {
-            $presetConfig = $this->getPresetConfig($presetName);
-            ImageHelper::rrmdir($presetConfig->getDestDir() . DIRECTORY_SEPARATOR . 'plugs' . DIRECTORY_SEPARATOR . $presetName);
-        }
-        else {
-            ImageHelper::rrmdir($this->getConfig()->getDestDir() . DIRECTORY_SEPARATOR . 'plugs');
-        }
-    }*/
-
-    /**
-     * @param string $presetName
-     * @throws ConfigException
-     */
-    /*public function clearPresetThumbs($presetName)
-    {
-        $presetConfig = $this->getPresetConfig($presetName);
-        ImageHelper::rrmdir($presetConfig->getDestDir() . DIRECTORY_SEPARATOR . 'presets' . DIRECTORY_SEPARATOR . $presetName);
-    }*/
-
-    /**
-     * @param string $presetName
-     * @return PresetConfig
-     * @throws ConfigException
-     */
-    protected function getPresetConfig($presetName)
-    {
-        return $this->getPresetConfigRegistry()->getPresetConfig($presetName);
     }
 
     /**
-     * @param string $presetName
-     * @return bool
+     * @param string|array $preset preset name or dynamic preset definition
+     * @param bool $absolute
+     * @return string
+     * @throws ConfigException
+     * @throws \RuntimeException
+     * @throws \InvalidArgumentException
      */
-    protected function isNamedPreset($presetName)
+    public function stubUrl($preset, $absolute = false)
     {
-        return $this->getPresetConfigRegistry()->isNamedPreset($presetName);
+        $presetDefinitionHash = $this->presetDefinitionHash($preset);
+        $this->checkUrlAvailability($presetDefinitionHash, $absolute);
+
+        return $this->stubUrlByHash($presetDefinitionHash, $absolute);
     }
 
     /**
-     * @param string $fileRelPath
-     * @param string $presetName
+     * @param string|array $preset preset name or dynamic preset definition
+     * @return string
      * @throws ConfigException
+     * @throws \RuntimeException
+     * @throws \InvalidArgumentException
      */
-    /*protected function clearFileThumb($fileRelPath, $presetName)
+    public function stubPath($preset)
     {
-        $destPath = $this->_pathResolver->getDestPath($presetName, $fileRelPath);
-        if (file_exists($destPath)) {
-            unlink($destPath);
-        }
-    }*/
+        $presetDefinitionHash = $this->presetDefinitionHash($preset);
+
+        return $this->stubPathByHash($presetDefinitionHash);
+    }
 
     /**
-     * @param string $presetName
+     * @param string|array|null $preset preset name or dynamic preset definition
+     * @throws ConfigException
+     */
+    public function clearCache($preset = null)
+    {
+        if ($preset !== null) {
+            $presetDefinitionHash = $this->presetDefinitionHash($preset);
+            ImageHelper::rrmdir($this->pathResolver()->presetDir($presetDefinitionHash));
+        } else {
+            $presetDefinitionHashList = $this->presetConfigRegistry()->presetDefinitionHashList();
+            foreach ($presetDefinitionHashList as $presetDefinitionHash) {
+                ImageHelper::rrmdir($this->pathResolver()->presetDir($presetDefinitionHash));
+            }
+        }
+    }
+
+    /**
+     * @param string $presetDefinitionHash
+     * @param bool $absolute
+     * @throws ConfigException
+     */
+    protected function checkUrlAvailability($presetDefinitionHash, $absolute = false)
+    {
+        $presetConfig = $this->presetConfig($presetDefinitionHash);
+        $webDir = $presetConfig->webDir();
+        $baseUrl = $presetConfig->baseUrl();
+
+        if ($webDir === null) {
+            throw new ConfigException("'webDir' is not configured");
+        }
+
+        if ($absolute && $baseUrl === null) {
+            throw new ConfigException("'baseUrl' is not configured for absolute url");
+        }
+    }
+
+    /**
+     * @param string $presetDefinitionHash
+     * @param bool $absolute
+     * @return string
+     * @throws ConfigException
+     * @throws \RuntimeException
+     */
+    protected function stubUrlByHash($presetDefinitionHash, $absolute = false)
+    {
+        $presetConfig = $this->presetConfig($presetDefinitionHash);
+        $presetPlugPath = $presetConfig->plugPath(true);
+        if ($presetPlugPath !== null) {
+            $presetPlugDestPath = $this->pathResolver()->destPath($presetPlugPath, $presetDefinitionHash, true);
+            if ($this->isWebPath($presetPlugDestPath, $presetDefinitionHash)) {
+                $this->checkPlug($presetPlugPath, $presetDefinitionHash);
+                return $this->urlFromPath($presetPlugDestPath, $presetDefinitionHash, $absolute);
+            } else {
+                throw new \RuntimeException("'{$presetPlugDestPath}' is not web accessible image");
+            }
+        }
+
+        $presetPlugUrl = $presetConfig->plugUrl(true);
+        if ($presetPlugUrl) {
+            return $presetPlugUrl;
+        }
+
+        $plugPath = $presetConfig->plugPath();
+        if ($plugPath !== null) {
+            $plugDestPath = $this->pathResolver()->destPath($plugPath, $presetDefinitionHash, true);
+            if ($this->isWebPath($plugDestPath, $presetDefinitionHash)) {
+                $this->checkPlug($plugPath, $presetDefinitionHash);
+                return $this->urlFromPath($plugDestPath, $presetDefinitionHash, $absolute);
+            } else {
+                throw new \RuntimeException("'{$plugDestPath}' is not web accessible image");
+            }
+        }
+
+        $plugUrl = $presetConfig->plugUrl();
+        if ($plugUrl) {
+            return $plugUrl;
+        } else {
+            throw new ConfigException("Path or url to image stub is not configured");
+        }
+    }
+
+    /**
+     * @param string $presetDefinitionHash
+     * @return string
+     * @throws ConfigException
+     * @throws \RuntimeException
+     */
+    protected function stubPathByHash($presetDefinitionHash)
+    {
+        $presetConfig = $this->presetConfig($presetDefinitionHash);
+        $plugPath = $presetConfig->plugPath();
+        if ($plugPath !== null) {
+            $this->checkPlug($plugPath, $presetDefinitionHash);
+            return $this->pathResolver()->destPath($plugPath, $presetDefinitionHash, true);
+        } else {
+            throw new \RuntimeException("Path to image stub is not configured");
+        }
+    }
+
+    /**
+     * @param string $path
+     * @param string $presetDefinitionHash
+     * @param bool $absolute
+     * @return string
+     * @throws ConfigException
+     */
+    protected function urlFromPath($path, $presetDefinitionHash, $absolute = false)
+    {
+        $presetConfig = $this->presetConfig($presetDefinitionHash);
+        $webDir = $presetConfig->webDir();
+        $baseUrl = $presetConfig->baseUrl();
+
+        $url = str_replace('\\', '/', substr($path, strlen($webDir)));
+
+        return $absolute ? $baseUrl . $url : $url;
+    }
+
+    /**
+     * @param string|array $preset preset name or dynamic preset definition
+     * @return string
+     * @throws \RuntimeException
+     * @throws \InvalidArgumentException
+     */
+    protected function presetDefinitionHash($preset)
+    {
+        if (is_string($preset)) {
+            $presetDefinitionHash = $this->presetConfigRegistry()->hashByName($preset);
+            if (null === $presetDefinitionHash) {
+                throw new \RuntimeException("Preset '{$preset}' not found");
+            }
+        } elseif (is_array($preset)) {
+            $presetDefinitionHash = $this->presetConfigRegistry()->addPresetDefinition($preset);
+        } else {
+            throw new \InvalidArgumentException("Аrgument 'preset' must be a string or an array");
+        }
+
+        return $presetDefinitionHash;
+    }
+
+    /**
      * @param string $webPath
+     * @param string $presetDefinitionHash
      * @return bool
      * @throws ConfigException
      */
-    protected function isWebPath($presetName, $webPath)
+    protected function isWebPath($webPath, $presetDefinitionHash)
     {
-        $presetConfig = $this->getPresetConfig($presetName);
-        $webDir = $presetConfig->getWebDir();
+        $presetConfig = $this->presetConfig($presetDefinitionHash);
+        $webDir = $presetConfig->webDir();
         if ($webDir !== null) {
             return false === strpos($webPath, $webDir) ? false : true;
         }
@@ -330,22 +295,20 @@ class ImgCache
     }
 
     /**
-     * @param string $presetName
-     * @param string $fileRelPath
-     * @param string $destPath
+     * @param string $srcRelPath
+     * @param string $presetDefinitionHash
      * @return bool
      * @throws ConfigException
+     * @throws \RuntimeException
      */
-    protected function checkThumb($presetName, $fileRelPath, $destPath)
+    protected function checkThumb($srcRelPath, $presetDefinitionHash)
     {
+        $destPath = $this->pathResolver()->destPath($srcRelPath, $presetDefinitionHash);
         if (!is_file($destPath)) {
-            $srcDir = $this->getPresetConfig($presetName)->getSrcDir();
-            $srcFullPath = $srcDir ? $srcDir . DIRECTORY_SEPARATOR . $fileRelPath : $fileRelPath;
-            if (is_file($srcFullPath)) {
-                $format = $this->_pathResolver->getDestFormat($presetName, $fileRelPath);
-                if (!$this->createThumb($presetName, $srcFullPath, $destPath, $format)) {
-                    return false;
-                }
+            $srcPath = $this->srcPath($srcRelPath, $presetDefinitionHash);
+            if (is_file($srcPath)) {
+                $format = $this->pathResolver()->destFormat($srcRelPath, $presetDefinitionHash);
+                $this->imgProcessor()->createThumb($srcPath, $destPath, $format, $presetDefinitionHash);
             } else {
                 return false;
             }
@@ -355,132 +318,73 @@ class ImgCache
     }
 
     /**
-     * @param string $presetName
      * @param string $plugPath
-     * @param string $plugDestPath
-     * @return bool
+     * @param string $presetDefinitionHash
      * @throws ConfigException
+     * @throws \RuntimeException
      */
-    protected function checkPlug($presetName, $plugPath, $plugDestPath)
+    protected function checkPlug($plugPath, $presetDefinitionHash)
     {
+        $plugDestPath = $this->pathResolver()->destPath($plugPath, $presetDefinitionHash, true);
         if (!is_file($plugDestPath)) {
-            $format = $this->_pathResolver->getDestFormat($presetName, $plugPath, true);
-            if (!$this->createThumb($presetName, $plugPath, $plugDestPath, $format, true)) {
-                return false;
-            }
+            $format = $this->pathResolver()->destFormat($plugPath, $presetDefinitionHash, true);
+            $this->imgProcessor()->createThumb($plugPath, $plugDestPath, $format, $presetDefinitionHash, true);
         }
-
-        return true;
     }
 
     /**
-     * @param string $presetName
-     * @param string $srcPath
-     * @param string $destPath
-     * @param string $format
-     * @param bool $isPlug
-     * @return bool
-     */
-    protected function createThumb($presetName, $srcPath, $destPath, $format, $isPlug = false)
-    {
-        try {
-            $presetConfig = $this->getPresetConfig($presetName);
-            $class = $presetConfig->getImageClass();
-            $driverCode = ImgHelper::getDriverCode($presetConfig->getDriver());
-
-            /** @var ImageInterface $image */
-            $image = (new $class($driverCode, false));
-            $image->open($srcPath);
-            $processPlug = $presetConfig->getProcessPlug();
-            if (!$isPlug || $processPlug) {
-                $this->applyEffects($presetName, $image);
-            }
-            $image->save($destPath, [
-                'format'                 => $format,
-                'jpeg_quality'           => $presetConfig->getJpegQuality(),
-                'png_compression_level'  => $presetConfig->getPngCompressionLevel(),
-                'png_compression_filter' => $presetConfig->getPngCompressionFilter(),
-            ]);
-            if (!$isPlug || $processPlug) {
-                $this->applyPostProcessors($presetName, $destPath, $format);
-            }
-        } catch (\Exception $ex) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * @param string $presetName
-     * @param ImageInterface $image
+     * @param string $srcRelPath
+     * @param string $presetDefinitionHash
+     * @return string
      * @throws ConfigException
      */
-    protected function applyEffects($presetName, $image)
+    protected function srcPath($srcRelPath, $presetDefinitionHash)
     {
-        $presetConfig = $this->getPresetConfig($presetName);
-        if ($presetConfig->hasEffects()) {
-            if (!isset($this->_presetsEffects[$presetName])) {
-                $config = $this->getConfig();
-                $this->_presetsEffects[$presetName] = [];
+        $presetConfig = $this->presetConfig($presetDefinitionHash);
+        $srcDir = $presetConfig->srcDir();
 
-                foreach ($presetConfig->getEffectsConfig() as $effectConfig) {
-                    $class = $config->getEffectClassName($effectConfig['type']);
-                    $params = empty($effectConfig['params']) ? [] : $effectConfig['params'];
-                    /** @var EffectInterface $effect */
-                    $effect = ImgHelper::createClassArrayAssoc($class, $params);
-                    $this->_presetsEffects[$presetName][] = $effect;
-                }
-            }
-
-            foreach ($this->_presetsEffects[$presetName] as $effect) {
-                $image->apply($effect);
-            }
-        }
+        return $srcDir ? $srcDir . DIRECTORY_SEPARATOR . $srcRelPath : $srcRelPath;
     }
 
     /**
-     * @param string $presetName
-     * @param string $path
-     * @param string $format
+     * @return Config
+     */
+    protected function config()
+    {
+        return $this->config;
+    }
+
+    /**
+     * @return PresetConfigRegistry
+     */
+    protected function presetConfigRegistry()
+    {
+        return $this->presetConfigRegistry;
+    }
+
+    /**
+     * @return PathResolver
+     */
+    protected function pathResolver()
+    {
+        return $this->pathResolver;
+    }
+
+    /**
+     * @return ImgProcessor
+     */
+    protected function imgProcessor()
+    {
+        return $this->imgProcessor;
+    }
+
+    /**
+     * @param string $presetDefinitionHash
+     * @return PresetConfig
      * @throws ConfigException
      */
-    protected function applyPostProcessors($presetName, $path, $format)
+    protected function presetConfig($presetDefinitionHash)
     {
-        $config = $this->getConfig();
-        $presetConfig = $this->getPresetConfig($presetName);
-        if ($presetConfig->hasPostProcessors()) {
-            if (!isset($this->_presetsPostProcessors[$presetName])) {
-                $this->_presetsPostProcessors[$presetName] = [];
-                foreach ($presetConfig->getPostProcessorsConfig() as $postProcessorConfig) {
-                    $class = $config->getPostProcessorClassName($postProcessorConfig['type']);
-                    $params = empty($postProcessorConfig['params']) ? [] : $postProcessorConfig['params'];
-                    /** @var PostProcessorInterface $postProcessor */
-                    $postProcessor = ImgHelper::createClassArrayAssoc($class, $params);
-                    $this->_presetsPostProcessors[$presetName][] = $postProcessor;
-                }
-            }
-            foreach ($this->_presetsPostProcessors[$presetName] as $postProcessor) {
-                if (in_array($format, $postProcessor->getSupportedFormats())) {
-                    $postProcessor->process($path);
-                }
-            }
-        } elseif ($config->hasPostProcessors()) {
-            if (empty($this->_postProcessors)) {
-                foreach ($config->getPostProcessorsConfig() as $postProcessorConfig) {
-                    $class = $config->getPostProcessorClassName($postProcessorConfig['type']);
-                    $params = empty($postProcessorConfig['params']) ? [] : $postProcessorConfig['params'];
-                    /** @var PostProcessorInterface $postProcessor */
-                    $postProcessor = ImgHelper::createClassArrayAssoc($class, $params);
-                    $this->_postProcessors[] = $postProcessor;
-                }
-            }
-
-            foreach ($this->_postProcessors as $postProcessor) {
-                if (in_array($format, $postProcessor->getSupportedFormats())) {
-                    $postProcessor->process($path);
-                }
-            }
-        }
+        return $this->presetConfigRegistry()->presetConfig($presetDefinitionHash);
     }
 }
