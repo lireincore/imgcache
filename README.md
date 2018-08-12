@@ -12,7 +12,7 @@ Also, you can use a special extension [lireincore/yii2-imgcache](https://github.
 
 ## Install
 
-Add the `"lireincore/imgcache": "~0.3.0"` package to your `require` section in the `composer.json` file
+Add the `"lireincore/imgcache": "^0.3.1"` package to your `require` section in the `composer.json` file
 
 or
 
