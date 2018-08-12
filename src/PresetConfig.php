@@ -247,10 +247,10 @@ class PresetConfig
      */
     protected function setDriver($driver)
     {
-        if (in_array($driver, ['imagick', 'gd', 'gmagick'], true)) {
+        if (in_array($driver, ImageHelper::supportedDrivers(), true)) {
             $this->driver = $driver;
         } else {
-            throw new ConfigException("Incorrect driver value. Should be 'gd', 'imagick' or 'gmagick'");
+            throw new ConfigException("Incorrect driver value. Should be one of the following: '" . implode("', '", ImageHelper::supportedDrivers()) . "'");
         }
     }
 

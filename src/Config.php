@@ -14,19 +14,7 @@ class Config
     const DEFAULT_PROCESS_PLUG = false;
 
     /**
-     * @var array
-     */
-    protected $defaultConvertMap = [
-        'jpeg' => 'jpeg',
-        'png'  => 'png',
-        'gif'  => 'gif',
-        'wbmp' => 'wbmp',
-        'xbm'  => 'xbm',
-        '*'    => 'png'
-    ];
-
-    /**
-     * @var string graphic library for all presets: `imagick`, `gd`, `gmagick`
+     * @var string graphic library for all presets: 'gd', 'imagick', 'gmagick'
      * (by default, tries to use: imagick->gd->gmagick)
      */
     protected $driver;
@@ -73,11 +61,6 @@ class Config
     protected $pngCompressionFilter;
 
     /**
-     * @var array formats convert map for all presets
-     */
-    protected $convertMap = [];
-
-    /**
      * @var string absolute path to plug for all presets (used if original image is not available)
      */
     protected $plugPath;
@@ -93,60 +76,24 @@ class Config
     protected $plugUrl;
 
     /**
+     * @var array formats convert map for all presets
+     */
+    protected $convertMap = [];
+
+    /**
+     * @var array effects map
+     */
+    protected $effectsMap = [];
+
+    /**
+     * @var array postprocessors map
+     */
+    protected $postProcessorsMap = [];
+
+    /**
      * @var array
      */
     protected $postProcessorsConfig = [];
-
-    /**
-     * @var string[] effects map
-     *
-     * ['effect' => 'class']
-     *
-     * For example,
-     * ```php
-     * [
-     *     'my_effect1' => '\Foo\Bar\MyEffect1',
-     *     'my_effect2' => '\Foo\Bar\MyEffect2'
-     * ]
-     * ```
-     */
-    protected $effectsMap = [
-        'flip'       => '\LireinCore\Image\Effects\Flip',
-        'rotate'     => '\LireinCore\Image\Effects\Rotate',
-        'resize'     => '\LireinCore\Image\Effects\Resize',
-        'crop'       => '\LireinCore\Image\Effects\Crop',
-        'scale'      => '\LireinCore\Image\Effects\Scale',
-        'scale_up'   => '\LireinCore\Image\Effects\ScaleUp',
-        'scale_down' => '\LireinCore\Image\Effects\ScaleDown',
-        'fit'        => '\LireinCore\Image\Effects\Fit',
-        'cover'      => '\LireinCore\Image\Effects\Cover',
-        'negative'   => '\LireinCore\Image\Effects\Negative',
-        'grayscale'  => '\LireinCore\Image\Effects\Grayscale',
-        'gamma'      => '\LireinCore\Image\Effects\Gamma',
-        'blur'       => '\LireinCore\Image\Effects\Blur',
-        'overlay'    => '\LireinCore\Image\Effects\Overlay',
-        'text'       => '\LireinCore\Image\Effects\Text'
-    ];
-
-    /**
-     * @var string[] postprocessors map
-     *
-     * ['postprocessor' => 'class']
-     *
-     * For example,
-     * ```php
-     * [
-     *     'my_postprocessor1' => '\Foo\Bar\MyPostProcessor1',
-     *     'my_postprocessor2' => '\Foo\Bar\MyPostProcessor2'
-     * ]
-     * ```
-     */
-    protected $postProcessorsMap = [
-        'jpegoptim'  => '\LireinCore\Image\PostProcessors\JpegOptim',
-        'optipng'    => '\LireinCore\Image\PostProcessors\OptiPng',
-        //'mozjpeg'    => '\LireinCore\Image\PostProcessors\MozJpeg',
-        'pngquant'   => '\LireinCore\Image\PostProcessors\PngQuant',
-    ];
 
     /**
      * Config constructor.
@@ -167,7 +114,7 @@ class Config
         } else {
             $driver = ImgHelper::availableDriver();
             if ($driver === null) {
-                throw new ConfigException("No graphic libraries installed or higher versions is required. Please, install 'gd', 'imagick' or 'gmagick'");
+                throw new ConfigException("No graphic libraries installed or higher versions is required. Please, install one of the following: '" . implode("', '", ImageHelper::supportedDrivers()) . "'");
             }
             $this->setDriver($driver);
         }
@@ -226,6 +173,7 @@ class Config
             $this->setPlugUrl($config['plug']['url']);
         }
 
+        $this->effectsMap = static::defaultEffectsMap();
         if (isset($config['effects_map'])) {
             if (is_array($config['effects_map'])) {
                 foreach ($config['effects_map'] as $type => $class) {
@@ -236,6 +184,7 @@ class Config
             }
         }
 
+        $this->postProcessorsMap = static::defaultPostProcessorsMap();
         if (isset($config['postprocessors_map'])) {
             if (is_array($config['postprocessors_map'])) {
                 foreach ($config['postprocessors_map'] as $type => $class) {
@@ -270,10 +219,10 @@ class Config
      */
     protected function setDriver($driver)
     {
-        if (in_array($driver, ['imagick', 'gd', 'gmagick'], true)) {
+        if (in_array($driver, ImageHelper::supportedDrivers(), true)) {
             $this->driver = $driver;
         } else {
-            throw new ConfigException("Incorrect driver value. Should be 'gd', 'imagick' or 'gmagick'");
+            throw new ConfigException("Incorrect driver value. Should be one of the following: '" . implode("', '", ImageHelper::supportedDrivers()) . "'");
         }
     }
 
@@ -483,9 +432,24 @@ class Config
     /**
      * @return array
      */
+    public static function defaultConvertMap()
+    {
+        return [
+            'jpeg' => 'jpeg',
+            'png'  => 'png',
+            'gif'  => 'gif',
+            'wbmp' => 'wbmp',
+            'xbm'  => 'xbm',
+            '*'    => 'png'
+        ];
+    }
+
+    /**
+     * @return array
+     */
     public function convertMap()
     {
-        return $this->convertMap + $this->defaultConvertMap;
+        return $this->convertMap + static::defaultConvertMap();
     }
 
     /**
@@ -588,6 +552,30 @@ class Config
     }
 
     /**
+     * @return array
+     */
+    public static function defaultEffectsMap()
+    {
+        return [
+            'flip'       => '\LireinCore\Image\Effects\Flip',
+            'rotate'     => '\LireinCore\Image\Effects\Rotate',
+            'resize'     => '\LireinCore\Image\Effects\Resize',
+            'crop'       => '\LireinCore\Image\Effects\Crop',
+            'scale'      => '\LireinCore\Image\Effects\Scale',
+            'scale_up'   => '\LireinCore\Image\Effects\ScaleUp',
+            'scale_down' => '\LireinCore\Image\Effects\ScaleDown',
+            'fit'        => '\LireinCore\Image\Effects\Fit',
+            'cover'      => '\LireinCore\Image\Effects\Cover',
+            'negative'   => '\LireinCore\Image\Effects\Negative',
+            'grayscale'  => '\LireinCore\Image\Effects\Grayscale',
+            'gamma'      => '\LireinCore\Image\Effects\Gamma',
+            'blur'       => '\LireinCore\Image\Effects\Blur',
+            'overlay'    => '\LireinCore\Image\Effects\Overlay',
+            'text'       => '\LireinCore\Image\Effects\Text'
+        ];
+    }
+
+    /**
      * Register custom effects or override default effects
      *
      * @param string $type
@@ -623,6 +611,19 @@ class Config
     public function effectClassName($type)
     {
         return isset($this->effectsMap[$type]) ? $this->effectsMap[$type] : null;
+    }
+
+    /**
+     * @return array
+     */
+    public static function defaultPostProcessorsMap()
+    {
+        return [
+            'jpegoptim'  => '\LireinCore\Image\PostProcessors\JpegOptim',
+            'optipng'    => '\LireinCore\Image\PostProcessors\OptiPng',
+            //'mozjpeg'    => '\LireinCore\Image\PostProcessors\MozJpeg',
+            'pngquant'   => '\LireinCore\Image\PostProcessors\PngQuant',
+        ];
     }
 
     /**
