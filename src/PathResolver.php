@@ -106,20 +106,21 @@ class PathResolver
             return $this->data['presets'][$presetDefinitionHash][$srcPath];
         }
 
-        $destInfo = pathinfo($srcPath);
-        $srcExt = $destInfo['extension'];
+        $srcInfo = pathinfo($srcPath);
+        $srcExt = $srcInfo['extension'];
         $srcFormat = ImageHelper::formatByExt($srcExt);
+
         $format = $this->convertedFormat($srcFormat, $presetDefinitionHash);
         $ext = ImageHelper::extensionByFormat($format);
-        $subPath = "{$destInfo['filename']}.{$ext}";
+        $subPath = "{$srcInfo['filename']}.{$ext}";
         $presetConfig = $this->presetConfig($presetDefinitionHash);
         $presetHash = $presetConfig->hash();
 
         if ($isPlug) {
             $subPath = implode(DIRECTORY_SEPARATOR, ['stubs', $presetHash, $subPath]);
         } else {
-            if ($destInfo['dirname'] !== '.') {
-                $subPath = $destInfo['dirname'] . DIRECTORY_SEPARATOR . $subPath;
+            if ($srcInfo['dirname'] !== '.') {
+                $subPath = $srcInfo['dirname'] . DIRECTORY_SEPARATOR . $subPath;
             }
             $subPath = implode(DIRECTORY_SEPARATOR, ['presets', $presetHash, $subPath]);
         }

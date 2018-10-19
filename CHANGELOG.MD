@@ -1,5 +1,9 @@
 # CHANGELOG
 
+### 0.3.2 (2018-10-19)
+
+  * Fixes
+
 ### 0.3.1 (2018-08-12)
 
   * Code refactoring

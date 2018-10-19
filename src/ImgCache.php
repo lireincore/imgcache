@@ -45,7 +45,7 @@ class ImgCache
     }
 
     /**
-     * @param string $srcRelPath relative path to source image
+     * @param string $srcPath absolute or relative path to source image
      * @param string|array $preset preset name or dynamic preset definition
      * @param bool $absolute
      * @param bool $useStub
@@ -54,24 +54,25 @@ class ImgCache
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */
-    public function url($srcRelPath, $preset, $absolute = false, $useStub = true)
+    public function url($srcPath, $preset, $absolute = false, $useStub = true)
     {
-        if (!is_string($srcRelPath)) {
-            throw new \InvalidArgumentException("Аrgument 'srcRelPath' must be a string");
+        if (!is_string($srcPath)) {
+            throw new \InvalidArgumentException("Аrgument 'srcPath' must be a string");
         }
 
         $presetDefinitionHash = $this->presetDefinitionHash($preset);
         $this->checkUrlAvailability($presetDefinitionHash, $absolute);
 
-        $destPath = $this->pathResolver()->destPath($srcRelPath, $presetDefinitionHash);
+        $destPath = $this->pathResolver()->destPath($srcPath, $presetDefinitionHash);
         if ($this->isWebPath($destPath, $presetDefinitionHash)) {
-            if ($this->checkThumb($srcRelPath, $presetDefinitionHash)) {
+            if ($this->checkThumb($srcPath, $presetDefinitionHash)) {
                 return $this->urlFromPath($destPath, $presetDefinitionHash, $absolute);
             } else {
                 if ($useStub) {
                     return $this->stubUrlByHash($presetDefinitionHash, $absolute);
                 } else {
-                    throw new \RuntimeException("Source image '{$destPath}' not found");
+                    $resolvedSrcPath = $this->resolveSrcPath($srcPath, $presetDefinitionHash);
+                    throw new \RuntimeException("Source image '{$resolvedSrcPath}' not found");
                 }
             }
         } else {
@@ -80,7 +81,7 @@ class ImgCache
     }
 
     /**
-     * @param string $srcRelPath relative path to source image
+     * @param string $srcPath absolute or relative path to source image
      * @param string|array $preset preset name or dynamic preset definition
      * @param bool $useStub
      * @return string
@@ -88,21 +89,21 @@ class ImgCache
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */
-    public function path($srcRelPath, $preset, $useStub = true)
+    public function path($srcPath, $preset, $useStub = true)
     {
-        if (!is_string($srcRelPath)) {
-            throw new \InvalidArgumentException("Аrgument 'srcRelPath' must be a string");
+        if (!is_string($srcPath)) {
+            throw new \InvalidArgumentException("Аrgument 'srcPath' must be a string");
         }
 
         $presetDefinitionHash = $this->presetDefinitionHash($preset);
-        if ($this->checkThumb($srcRelPath, $presetDefinitionHash)) {
-            return $this->pathResolver()->destPath($srcRelPath, $presetDefinitionHash);
+        if ($this->checkThumb($srcPath, $presetDefinitionHash)) {
+            return $this->pathResolver()->destPath($srcPath, $presetDefinitionHash);
         } else {
             if ($useStub) {
                 return $this->stubPathByHash($presetDefinitionHash);
             } else {
-                $path = $this->pathResolver()->destPath($srcRelPath, $presetDefinitionHash);
-                throw new \RuntimeException("Source image '{$path}' not found");
+                $resolvedSrcPath = $this->resolveSrcPath($srcPath, $presetDefinitionHash);
+                throw new \RuntimeException("Source image '{$resolvedSrcPath}' not found");
             }
         }
     }
@@ -295,20 +296,20 @@ class ImgCache
     }
 
     /**
-     * @param string $srcRelPath
+     * @param string $srcPath
      * @param string $presetDefinitionHash
      * @return bool
      * @throws ConfigException
      * @throws \RuntimeException
      */
-    protected function checkThumb($srcRelPath, $presetDefinitionHash)
+    protected function checkThumb($srcPath, $presetDefinitionHash)
     {
-        $destPath = $this->pathResolver()->destPath($srcRelPath, $presetDefinitionHash);
+        $destPath = $this->pathResolver()->destPath($srcPath, $presetDefinitionHash);
         if (!is_file($destPath)) {
-            $srcPath = $this->srcPath($srcRelPath, $presetDefinitionHash);
-            if (is_file($srcPath)) {
-                $format = $this->pathResolver()->destFormat($srcRelPath, $presetDefinitionHash);
-                $this->imgProcessor()->createThumb($srcPath, $destPath, $format, $presetDefinitionHash);
+            $resolvedSrcPath = $this->resolveSrcPath($srcPath, $presetDefinitionHash);
+            if (is_file($resolvedSrcPath)) {
+                $format = $this->pathResolver()->destFormat($srcPath, $presetDefinitionHash);
+                $this->imgProcessor()->createThumb($resolvedSrcPath, $destPath, $format, $presetDefinitionHash);
             } else {
                 return false;
             }
@@ -333,17 +334,24 @@ class ImgCache
     }
 
     /**
-     * @param string $srcRelPath
+     * @param string $srcPath
      * @param string $presetDefinitionHash
      * @return string
      * @throws ConfigException
      */
-    protected function srcPath($srcRelPath, $presetDefinitionHash)
+    protected function resolveSrcPath($srcPath, $presetDefinitionHash)
     {
         $presetConfig = $this->presetConfig($presetDefinitionHash);
         $srcDir = $presetConfig->srcDir();
 
-        return $srcDir ? $srcDir . DIRECTORY_SEPARATOR . $srcRelPath : $srcRelPath;
+        if (null !== $srcDir) {
+            $srcPath = ltrim($srcPath, "\\/");
+            $resolvedSrcPath = $srcDir . DIRECTORY_SEPARATOR . $srcPath;
+        } else {
+            $resolvedSrcPath = $srcPath;
+        }
+
+        return $resolvedSrcPath;
     }
 
     /**

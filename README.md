@@ -8,11 +8,13 @@
 
 Adds caching capabilities to the package [lireincore/image](https://github.com/lireincore/image)
 
-Also, you can use a special extension [lireincore/yii2-imgcache](https://github.com/lireincore/yii2-imgcache) that integrates this package with Yii2 framework.
+Also, you can use [lireincore/yii2-imgcache](https://github.com/lireincore/yii2-imgcache) extension that integrates this package with Yii2 framework.
+
+And, you can use [lireincore/LireinCoreImgCacheBundle](https://github.com/lireincore/LireinCoreImgCacheBundle) bundle that integrates this package with Symfony framework.
 
 ## Install
 
-Add the `"lireincore/imgcache": "^0.3.1"` package to your `require` section in the `composer.json` file
+Add the `"lireincore/imgcache": "^0.3.2"` package to your `require` section in the `composer.json` file
 
 or
 
