@@ -4,27 +4,27 @@ namespace LireinCore\ImgCache;
 
 use LireinCore\ImgCache\Exception\ConfigException;
 
-class PresetConfigRegistry
+final class PresetConfigRegistry
 {
     /**
      * @var Config
      */
-    protected $config;
+    private $config;
 
     /**
      * @var string[]
      */
-    protected $nameToHashMap = [];
+    private $nameToHashMap = [];
 
     /**
      * @var array presets definitions (from configuration and your calls)
      */
-    protected $presetDefinitions = [];
+    private $presetDefinitions = [];
 
     /**
      * @var PresetConfig[] presets configs
      */
-    protected $presetConfigs = [];
+    private $presetConfigs = [];
 
     /**
      * PresetConfigStorage constructor.
@@ -44,7 +44,7 @@ class PresetConfigRegistry
      * @param array $presetDefinition
      * @return string
      */
-    public function addPresetDefinition(array $presetDefinition)
+    public function addPresetDefinition(array $presetDefinition) : string
     {
         $presetDefinitionHash = $this->presetDefinitionHash($presetDefinition);
 
@@ -58,54 +58,51 @@ class PresetConfigRegistry
      * @return PresetConfig|null
      * @throws ConfigException
      */
-    public function presetConfig($presetDefinitionHash)
+    public function presetConfig(string $presetDefinitionHash) : ?PresetConfig
     {
         if (isset($this->presetConfigs[$presetDefinitionHash])) {
             return $this->presetConfigs[$presetDefinitionHash];
-        } elseif (isset($this->presetDefinitions[$presetDefinitionHash])) {
+        }
+        if (isset($this->presetDefinitions[$presetDefinitionHash])) {
             $this->presetConfigs[$presetDefinitionHash] = new PresetConfig($this->config, $this->presetDefinitions[$presetDefinitionHash]);
             return $this->presetConfigs[$presetDefinitionHash];
-        } else {
-            return null;
         }
+        return null;
     }
 
     /**
      * @return string[]
      */
-    public function presetDefinitionHashList()
+    public function presetDefinitionHashList() : array
     {
-        return array_keys($this->presetDefinitions);
+        return \array_keys($this->presetDefinitions);
     }
 
     /**
      * @param string $presetName
      * @return null|string
      */
-    public function hashByName($presetName)
+    public function hashByName(string $presetName) : ?string
     {
-        return isset($this->nameToHashMap[$presetName]) ? $this->nameToHashMap[$presetName] : null;
+        return $this->nameToHashMap[$presetName] ?? null;
     }
 
     /**
      * @param array $presetDefinition
      * @return string
      */
-    protected function presetDefinitionHash(array $presetDefinition)
+    private function presetDefinitionHash(array $presetDefinition) : string
     {
         if (!empty($presetDefinition['plug'])) {
-            ksort($presetDefinition['plug']);
+            \ksort($presetDefinition['plug']);
         }
-
         if (!empty($presetDefinition['effects'])) {
             $presetDefinition['effects'] = $this->sortEffectsOrPostProcessorsConfig($presetDefinition['effects']);
         }
-
         if (!empty($presetDefinition['postprocessors'])) {
             $presetDefinition['postprocessors'] = $this->sortEffectsOrPostProcessorsConfig($presetDefinition['postprocessors']);
         }
-
-        ksort($presetDefinition);
+        \ksort($presetDefinition);
 
         return ImgHelper::hash($presetDefinition);
     }
@@ -114,13 +111,13 @@ class PresetConfigRegistry
      * @param array $configItems
      * @return array
      */
-    protected function sortEffectsOrPostProcessorsConfig(array $configItems)
+    private function sortEffectsOrPostProcessorsConfig(array $configItems) : array
     {
-        return array_map(function ($item) {
+        return \array_map(function ($item) {
             if (!empty($item['params'])) {
-                ksort($item['params']);
+                \ksort($item['params']);
             }
-            ksort($item);
+            \ksort($item);
             return $item;
         }, $configItems);
     }

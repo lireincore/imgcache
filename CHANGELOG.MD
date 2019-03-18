@@ -1,5 +1,12 @@
 # CHANGELOG
 
+### 0.4.0 (2019-02-18)
+
+  * Added type hinting
+  * Added support for PSR-3 logger
+  * Added support for event dispatch
+  * Added thumb created event
+
 ### 0.3.2 (2018-10-19)
 
   * Fixes

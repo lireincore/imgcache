@@ -5,22 +5,22 @@ namespace LireinCore\ImgCache;
 use LireinCore\Image\ImageHelper;
 use LireinCore\ImgCache\Exception\ConfigException;
 
-class PathResolver
+final class PathResolver
 {
     /**
      * @var Config
      */
-    protected $config;
+    private $config;
 
     /**
      * @var PresetConfigRegistry
      */
-    protected $presetConfigRegistry;
+    private $presetConfigRegistry;
 
     /**
      * @var array
      */
-    protected $data = [];
+    private $data = [];
 
     /**
      * PathResolver constructor.
@@ -41,7 +41,7 @@ class PathResolver
      * @return string
      * @throws ConfigException
      */
-    public function destPath($srcPath, $presetDefinitionHash, $isPlug = false)
+    public function destPath(string $srcPath, string $presetDefinitionHash, bool $isPlug = false) : string
     {
         $data = $this->data($srcPath, $presetDefinitionHash, $isPlug);
         $presetConfig = $this->presetConfig($presetDefinitionHash);
@@ -56,7 +56,7 @@ class PathResolver
      * @return string
      * @throws ConfigException
      */
-    public function destFormat($srcPath, $presetDefinitionHash, $isPlug = false)
+    public function destFormat(string $srcPath, string $presetDefinitionHash, bool $isPlug = false) : string
     {
         $data = $this->data($srcPath, $presetDefinitionHash, $isPlug);
 
@@ -68,11 +68,11 @@ class PathResolver
      * @return string
      * @throws ConfigException
      */
-    public function presetDir($presetDefinitionHash)
+    public function presetDir(string $presetDefinitionHash) : string
     {
         $presetConfig = $this->presetConfig($presetDefinitionHash);
 
-        return implode(DIRECTORY_SEPARATOR, [$presetConfig->destDir(), 'presets', $presetDefinitionHash]);
+        return \implode(DIRECTORY_SEPARATOR, [$presetConfig->destDir(), 'presets', $presetDefinitionHash]);
     }
 
     /**
@@ -80,11 +80,11 @@ class PathResolver
      * @return string
      * @throws ConfigException
      */
-    public function stubDir($presetDefinitionHash)
+    public function stubDir(string $presetDefinitionHash) : string
     {
         $presetConfig = $this->presetConfig($presetDefinitionHash);
 
-        return implode(DIRECTORY_SEPARATOR, [$presetConfig->destDir(), 'stubs', $presetDefinitionHash]);
+        return \implode(DIRECTORY_SEPARATOR, [$presetConfig->destDir(), 'stubs', $presetDefinitionHash]);
     }
 
     /**
@@ -94,19 +94,19 @@ class PathResolver
      * @return array
      * @throws ConfigException
      */
-    protected function data($srcPath, $presetDefinitionHash, $isPlug = false)
+    private function data(string $srcPath, string $presetDefinitionHash, bool $isPlug = false) : array
     {
         if (!$isPlug) {
-            $srcPath = ltrim($srcPath, "\\/");
+            $srcPath = \ltrim($srcPath, "\\/");
         }
-
         if ($isPlug && isset($this->data['stubs'][$presetDefinitionHash][$srcPath])) {
             return $this->data['stubs'][$presetDefinitionHash][$srcPath];
-        } elseif (isset($this->data['presets'][$presetDefinitionHash][$srcPath])) {
+        }
+        if (isset($this->data['presets'][$presetDefinitionHash][$srcPath])) {
             return $this->data['presets'][$presetDefinitionHash][$srcPath];
         }
 
-        $srcInfo = pathinfo($srcPath);
+        $srcInfo = \pathinfo($srcPath);
         $srcExt = $srcInfo['extension'];
         $srcFormat = ImageHelper::formatByExt($srcExt);
 
@@ -117,12 +117,12 @@ class PathResolver
         $presetHash = $presetConfig->hash();
 
         if ($isPlug) {
-            $subPath = implode(DIRECTORY_SEPARATOR, ['stubs', $presetHash, $subPath]);
+            $subPath = \implode(DIRECTORY_SEPARATOR, ['stubs', $presetHash, $subPath]);
         } else {
             if ($srcInfo['dirname'] !== '.') {
                 $subPath = $srcInfo['dirname'] . DIRECTORY_SEPARATOR . $subPath;
             }
-            $subPath = implode(DIRECTORY_SEPARATOR, ['presets', $presetHash, $subPath]);
+            $subPath = \implode(DIRECTORY_SEPARATOR, ['presets', $presetHash, $subPath]);
         }
 
         $data = [
@@ -146,24 +146,24 @@ class PathResolver
      * @return string
      * @throws ConfigException
      */
-    protected function convertedFormat($srcFormat, $presetDefinitionHash)
+    private function convertedFormat(string $srcFormat, string $presetDefinitionHash) : string
     {
         $presetConfig = $this->presetConfig($presetDefinitionHash);
         $convertMap = $presetConfig->convertMap();
 
-        if (key_exists($srcFormat, $convertMap)) {
+        if (\array_key_exists($srcFormat, $convertMap)) {
             return $convertMap[$srcFormat];
-        } elseif (key_exists('*', $convertMap)) {
-            return $convertMap['*'];
-        } else {
-            return $srcFormat;
         }
+        if (\array_key_exists('*', $convertMap)) {
+            return $convertMap['*'];
+        }
+        return $srcFormat;
     }
 
     /**
      * @return Config
      */
-    protected function config()
+    private function config() : Config
     {
         return $this->config;
     }
@@ -171,7 +171,7 @@ class PathResolver
     /**
      * @return PresetConfigRegistry
      */
-    protected function presetConfigRegistry()
+    private function presetConfigRegistry() : PresetConfigRegistry
     {
         return $this->presetConfigRegistry;
     }
@@ -181,7 +181,7 @@ class PathResolver
      * @return PresetConfig
      * @throws ConfigException
      */
-    protected function presetConfig($presetDefinitionHash)
+    private function presetConfig(string $presetDefinitionHash) : PresetConfig
     {
         return $this->presetConfigRegistry()->presetConfig($presetDefinitionHash);
     }

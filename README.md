@@ -14,7 +14,7 @@ And, you can use [lireincore/LireinCoreImgCacheBundle](https://github.com/lirein
 
 ## Install
 
-Add the `"lireincore/imgcache": "^0.3.2"` package to your `require` section in the `composer.json` file
+Add the `"lireincore/imgcache": "^0.4"` package to your `require` section in the `composer.json` file
 
 or
 
@@ -76,7 +76,8 @@ $config = [
     'image_class' => '\Foo\Bar\MyImageClass',
 
     //register custom effects or override default effects
-    //(default effects: crop, cover, resize, scale_up, scale_down, scale, rotate, overlay, flip, fit, blur, gamma, grayscale, negative, text)
+    //(default effects: crop, cover, resize, scale_up, scale_down, scale, rotate, overlay,
+    // flip, fit, blur, gamma, grayscale, negative, text)
     'effects_map' => [
         //effect => class (which implements \LireinCore\Image\Effect interface)
         'myeffect1' => '\Foo\Bar\MyEffect1',
@@ -99,9 +100,9 @@ $config = [
             //postprocessor params
             'params' => [
                 'path' => '/path/to/jpegoptim', // custom path to postprocessor binary (default: '/usr/bin/jpegoptim')
-                'quality' => 75, // for example: 0-100, 0 - worst | 100 - best (default: 85)
-                'strip_all' => false, // remove all metadata (Comments, Exif, IPTC, ICC, XMP) (default: true)
-                'progressive' => false // convert to progressive jpeg (default: true)
+                'quality' => 75,                // for example: 0-100, 0 - worst | 100 - best (default: 85)
+                'strip_all' => false,           // remove all metadata (Comments, Exif, IPTC, ICC, XMP) (default: true)
+                'progressive' => false          // convert to progressive jpeg (default: true)
             ]
         ],
         [
@@ -110,8 +111,9 @@ $config = [
             //postprocessor params
             'params' => [
                 'path' => '/path/to/optipng', // custom path to postprocessor binary (default: '/usr/bin/optipng')
-                'level' => 5, // for example: 0-7, 0 - maximum compression speed | 7 - maximum compression size (default: 2)
-                'strip_all' => false // remove all metadata (default: true)
+                'level' => 5,                 // for example: 0-7, 0 - max compression speed |
+                                              // 7 - max compression size (default: 2)
+                'strip_all' => false          // remove all metadata (default: true)
             ]
         ]
     ],
@@ -127,12 +129,17 @@ $config = [
                     'type' => 'overlay',
                     //effect params
                     'params' => [
-                        'path' => '/path/to/my/project/assets/watermark.png', // path to overlay
-                        'opacity' => 80, // overlay opacity, for example: 0-100, 0 - fully transparent | 100 - not transparent (default: 100) (not supported in gmagick)
-                        'offset_x' => 'right', // overlay horizontal offset, for example: 100 | 20% | center | left | right  (default: right)
-                        'offset_y' => 'bottom', // overlay vertical offset, for example: 100 | 20% | center | top | bottom  (default: bottom)
-                        'width' => '50%', // overlay width, for example: 100 | 20% - change overlay image width (% - relative to the background image) (default: original size)
-                        'height' => '50%' // overlay height, for example: 100 | 20% - change overlay image height (% - relative to the background image) (default: original size)
+                        'path' => '/path/to/watermark.png', // path to overlay
+                        'opacity' => 80,        // overlay opacity, for example: 0-100, 0 - fully transparent |
+                                                // 100 - not transparent (default: 100) (not supported in gmagick)
+                        'offset_x' => 'right',  // overlay horizontal offset, for example: 100 | 20% | center |
+                                                // left | right  (default: right)
+                        'offset_y' => 'bottom', // overlay vertical offset, for example: 100 | 20% | center |
+                                                // top | bottom  (default: bottom)
+                        'width' => '50%',       // overlay width, for example: 100 | 20% - change overlay image width
+                                                // (% - relative to the background image) (default: original size)
+                        'height' => '50%'       // overlay height, for example: 100 | 20% - change overlay image height
+                                                // (% - relative to the background image) (default: original size)
                     ]
                 ],
             ],
@@ -180,7 +187,7 @@ $config = [
                     //postprocessor params
                     'params' => [
                         'path' => '/path/to/pngquant', // custom path to postprocessor binary (default: '/usr/bin/pngquant')
-                        'quality' => 75, // for example: 0-100, 0 - worst | 100 - best (default: 85)
+                        'quality' => 75,               // for example: 0-100, 0 - worst | 100 - best (default: 85)
                     ]
                 ]
             ],
@@ -193,8 +200,8 @@ $config = [
                 [
                     'type' => 'scale_up',
                     'params' => [
-                        'max_width' => '500', // for example: 100 | 20% (default: auto)
-                        'max_height' => '500', // for example: 100 | 20% (default: auto)
+                        'max_width' => '500',    // for example: 100 | 20% (default: auto)
+                        'max_height' => '500',   // for example: 100 | 20% (default: auto)
                         'allow_increase' => true // increase if image is less (default: false)
                     ]
                 ],
@@ -204,8 +211,8 @@ $config = [
                     'params' => [
                         'offset_x' => '50%', // for example: 100 | 20% | center | left | right (default: left)
                         'offset_y' => '50%', // for example: 100 | 20% | center | top | bottom (default: top)
-                        'width' => '50%', // for example: 100 | 20% (default: auto)
-                        'height' => '50%' // for example: 100 | 20% (default: auto)
+                        'width' => '50%',    // for example: 100 | 20% (default: auto)
+                        'height' => '50%'    // for example: 100 | 20% (default: auto)
                     ]
                 ],
                 //third effect
@@ -243,27 +250,33 @@ $config = [
                 [
                     'type' => 'fit',
                     'params' => [
-                        'offset_x' => 'center', // for example: 100 | 20% | center | left | right (default: center)
-                        'offset_y' => 'center', // for example: 100 | 20% | center | top | bottom (default: center)
-                        'width' => '200', // for example: 100 | 20% (default: auto)
-                        'height' => '90', // for example: 100 | 20% (default: auto)
-                        'bgcolor' => '#f00', // background color, for example: '#fff' or '#ffffff' - hex | '50,50,50' - rgb | '50,50,50,50' - cmyk (default: #fff)
-                        'bgtransparency' => 50, // background transparency, for example: 0-100, 0 - not transparent | 100 - fully transparent (default: 0) (not supported in gmagick)
+                        'offset_x' => 'center',  // for example: 100 | 20% | center | left | right (default: center)
+                        'offset_y' => 'center',  // for example: 100 | 20% | center | top | bottom (default: center)
+                        'width' => '200',        // for example: 100 | 20% (default: auto)
+                        'height' => '90',        // for example: 100 | 20% (default: auto)
+                        'bgcolor' => '#f00',     // background color, for example: '#fff' or '#ffffff' - hex |
+                                                 // '50,50,50' - rgb | '50,50,50,50' - cmyk (default: #fff)
+                        'bgtransparency' => 50,  // background transparency, for example: 0-100, 0 - not transparent |
+                                                 // 100 - fully transparent (default: 0) (not supported in gmagick)
                         'allow_increase' => true // increase if image is less (default: false)
                     ]
                 ]
                 [
                     'type' => 'text',
                     'params' => [
-                        'text' => 'Hello word!', // text for writing
-                        'font' => '/path/to/font', // font name or absolute path to the font file, for example: Verdana (default: Times New Roman)
-                        'offset_x' => '5%', // for example: 100 | 20% (default: 0)
-                        'offset_y' => '10', // for example: 100 | 20% (default: 0)
-                        'size' => 14, // font size, for example: 14 (default: 12)
-                        'color' => '#000', // font color, for example: '#fff' or '#ffffff' - hex | '50,50,50' - rgb | '50,50,50,50' - cmyk (default: #fff)
-                        'opacity' => 50, // font opacity, for example: 0-100, 0 - fully transparent | 100 - not transparent (default: 100)
-                        'angle' => 30, // in degrees, for example: 90 (default: 0)
-                        'width' => '90%', // for example: 100 | 20% - text box width (% - relative to the background image) (default: none)
+                        'text' => 'Hello word!',   // text for writing
+                        'font' => '/path/to/font', // font name or absolute path to the font file, for example:
+                                                   // Verdana (default: Times New Roman)
+                        'offset_x' => '5%',        // for example: 100 | 20% (default: 0)
+                        'offset_y' => '10',        // for example: 100 | 20% (default: 0)
+                        'size' => 14,              // font size, for example: 14 (default: 12)
+                        'color' => '#000',         // font color, for example: '#fff' or '#ffffff' - hex |
+                                                   // '50,50,50' - rgb | '50,50,50,50' - cmyk (default: #fff)
+                        'opacity' => 50,           // font opacity, for example: 0-100, 0 - fully transparent |
+                                                   // 100 - not transparent (default: 100)
+                        'angle' => 30,             // in degrees, for example: 90 (default: 0)
+                        'width' => '90%',          // for example: 100 | 20% - text box width
+                                                   // (% - relative to the background image) (default: none)
                     ]
                 ]
             ],
@@ -291,9 +304,11 @@ $config = [
                 [
                     'type' => 'rotate',
                     'params' => [
-                        'angle' => 90, // angle in degrees
-                        'bgcolor' => '#f00', // background color, for example: '#fff' or '#ffffff' - hex | '50,50,50' - rgb | '50,50,50,50' - cmyk (default: #fff)
-                        'bgtransparency' => 70 // background transparency, for example: 0-100, 0 - not transparent | 100 - fully transparent (default: 0) (not supported in gmagick)
+                        'angle' => 90,         // angle in degrees
+                        'bgcolor' => '#f00',   // background color, for example: '#fff' or '#ffffff' - hex |
+                                               // '50,50,50' - rgb | '50,50,50,50' - cmyk (default: #fff)
+                        'bgtransparency' => 70 // background transparency, for example: 0-100, 0 - not transparent |
+                                               // 100 - fully transparent (default: 0) (not supported in gmagick)
                     ]
                 ],
                 [
@@ -302,6 +317,21 @@ $config = [
                         'ratio' => '200%', // (for example: 0.5 | 50%)
                     ]
                 ],
+            ],
+        ],
+
+        //preset 'test3'
+        'test3' => [
+            'effects' => [
+                [
+                    'type' => 'cover',
+                    'params' => [
+                        'offset_x' => 'left', // for example: 100 | 20% | center | left | right (default: center)
+                        'offset_y' => 'top',  // for example: 100 | 20% | center | top | bottom (default: center)
+                        'width' => '200',     // for example: 100 | 20% (default: auto)
+                        'height' => '90',     // for example: 100 | 20% (default: auto)
+                    ]
+                ]
             ],
         ],
     ],
@@ -332,4 +362,4 @@ $imgcache->clearCache();
 
 ## License
 
-The MIT License (MIT). Please see [License File](LICENSE) for more information.
+This project is licensed under the MIT License - see the [License File](LICENSE) file for details

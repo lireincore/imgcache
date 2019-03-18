@@ -3,96 +3,97 @@
 namespace LireinCore\ImgCache;
 
 use LireinCore\Image\ImageHelper;
+use LireinCore\Image\Manipulator;
 use LireinCore\ImgCache\Exception\ConfigException;
 
-class PresetConfig
+final class PresetConfig
 {
     /**
      * @var string graphic library for all presets: `imagick`, `gd`, `gmagick`
      * (by default, tries to use: imagick->gd->gmagick)
      */
-    protected $driver;
+    private $driver;
 
     /**
      * @var string image class for all presets (which implements \LireinCore\Image\Manipulator interface)
      */
-    protected $imageClass;
+    private $imageClass;
 
     /**
      * @var string original images source directory for all presets
      */
-    protected $srcDir;
+    private $srcDir;
 
     /**
      * @var string thumbs destination directory for all presets
      * (to access the thumbs from the web they should be in a directory accessible from the web)
      */
-    protected $destDir;
+    private $destDir;
 
     /**
      * @var string web directory for all presets
      */
-    protected $webDir;
+    private $webDir;
 
     /**
      * @var string base url for all presets
      */
-    protected $baseUrl;
+    private $baseUrl;
 
     /**
      * @var int quality of save jpeg images for all presets: 0-100
      */
-    protected $jpegQuality;
+    private $jpegQuality;
 
     /**
      * @var int compression level of save png images for all presets: 0-9
      */
-    protected $pngCompressionLevel;
+    private $pngCompressionLevel;
 
     /**
      * @var int compression filter of save png images for all presets: 0-9
      */
-    protected $pngCompressionFilter;
+    private $pngCompressionFilter;
 
     /**
      * @var array formats convert map for all presets
      */
-    protected $convertMap = [];
+    private $convertMap = [];
 
     /**
      * @var string absolute path to plug for all presets (used if original image is not available)
      */
-    protected $plugPath;
+    private $plugPath;
 
     /**
      * @var bool apply preset effects and postprocessors to plug?
      */
-    protected $processPlug;
+    private $processPlug;
 
     /**
      * @var string url to get the plug from a third-party service (used if original image is not available)
      */
-    protected $plugUrl;
+    private $plugUrl;
 
     /**
      * @var array
      */
-    protected $postProcessorsConfig = [];
+    private $postProcessorsConfig = [];
 
     /**
      * @var array
      */
-    protected $effectsConfig = [];
+    private $effectsConfig = [];
 
     /**
      * @var Config
      */
-    protected $config;
+    private $config;
 
     /**
      * @var string
      */
-    protected $hash;
+    private $hash;
 
     /**
      * PresetConfig constructor.
@@ -101,7 +102,7 @@ class PresetConfig
      * @param array $config
      * @throws ConfigException
      */
-    public function __construct(Config $baseConfig, $config)
+    public function __construct(Config $baseConfig, array $config)
     {
         $this->config = $baseConfig;
 
@@ -123,7 +124,7 @@ class PresetConfig
 
         if (!empty($config['webdir'])) {
             $this->setWebDir($config['webdir']);
-        };
+        }
 
         if (!empty($config['baseurl'])) {
             $this->setBaseUrl($config['baseurl']);
@@ -142,7 +143,14 @@ class PresetConfig
         }
 
         if (isset($config['convert_map'])) {
-            $this->setConvertMap($config['convert_map']);
+            if (\is_array($config['convert_map'])) {
+                $this->convertMap = $this->config()->convertMap();
+                foreach ($config['convert_map'] as $srcFormats => $destFormat) {
+                    $this->registerConvert($srcFormats, $destFormat);
+                }
+            } else {
+                throw new ConfigException('Incorrect config format');
+            }
         }
 
         if (!empty($config['plug']['path'])) {
@@ -158,10 +166,10 @@ class PresetConfig
         }
 
         if (isset($config['effects'])) {
-            if (is_array($config['effects'])) {
+            if (\is_array($config['effects'])) {
                 foreach ($config['effects'] as $effectConfig) {
                     if (!isset($effectConfig['type'])) {
-                        throw new ConfigException("Incorrect config format. Effect type not specified");
+                        throw new ConfigException('Incorrect config format. Effect type not specified');
                     }
                     $class = $this->config()->effectClassName($effectConfig['type']);
                     if (null === $class) {
@@ -175,10 +183,10 @@ class PresetConfig
         }
 
         if (isset($config['postprocessors'])) {
-            if (is_array($config['postprocessors'])) {
+            if (\is_array($config['postprocessors'])) {
                 foreach ($config['postprocessors'] as $postProcessorConfig) {
                     if (!isset($postProcessorConfig['type'])) {
-                        throw new ConfigException("Incorrect config format. Postprocessor type not specified");
+                        throw new ConfigException('Incorrect config format. Postprocessor type not specified');
                     }
                     $class = $this->config()->postProcessorClassName($postProcessorConfig['type']);
                     if (null === $class) {
@@ -197,24 +205,21 @@ class PresetConfig
     /**
      * @return array
      */
-    protected function hashData()
+    private function hashData() : array
     {
         $hashData = [];
-
         $hashData['driver'] = $this->driver();
         $hashData['image_class'] = $this->imageClass();
         $hashData['jpeg_quality'] = $this->jpegQuality();
         $hashData['png_compression_level'] = $this->pngCompressionLevel();
         $hashData['png_compression_filter'] = $this->pngCompressionFilter();
         $hashData['effects_map'] = $this->config()->effectsMap();
-        ksort($hashData['effects_map']);
+        \ksort($hashData['effects_map']);
         $hashData['postprocessors_map'] = $this->config()->postProcessorsMap();
-        ksort($hashData['postprocessors_map']);
-
+        \ksort($hashData['postprocessors_map']);
         if ($this->hasEffects()) {
             $hashData['effects_config'] = $this->sortEffectsOrPostProcessorsConfig($this->effectsConfig());
         }
-
         if ($this->hasPostProcessors()) {
             $hashData['postprocessors_config'] =
                 $this->sortEffectsOrPostProcessorsConfig($this->postProcessorsConfig());
@@ -230,13 +235,13 @@ class PresetConfig
      * @param array $configItems
      * @return array
      */
-    protected function sortEffectsOrPostProcessorsConfig(array $configItems)
+    private function sortEffectsOrPostProcessorsConfig(array $configItems) : array
     {
-        return array_map(function ($item) {
+        return \array_map(function ($item) {
             if (!empty($item['params'])) {
-                ksort($item['params']);
+                \ksort($item['params']);
             }
-            ksort($item);
+            \ksort($item);
             return $item;
         }, $configItems);
     }
@@ -245,61 +250,58 @@ class PresetConfig
      * @param string $driver
      * @throws ConfigException
      */
-    protected function setDriver($driver)
+    private function setDriver(string $driver) : void
     {
-        if (in_array($driver, ImageHelper::supportedDrivers(), true)) {
+        if (\in_array($driver, ImageHelper::supportedDrivers(), true)) {
             $this->driver = $driver;
         } else {
-            throw new ConfigException("Incorrect driver value. Should be one of the following: '" . implode("', '", ImageHelper::supportedDrivers()) . "'");
+            throw new ConfigException("Incorrect driver value. Should be one of the following: '" . \implode("', '", ImageHelper::supportedDrivers()) . "'");
         }
     }
 
     /**
      * @return string
      */
-    public function driver()
+    public function driver() : string
     {
-        return $this->driver !== null ? $this->driver : $this->config()->driver();
+        return $this->driver ?? $this->config()->driver();
     }
 
     /**
      * @param null|string $srcDir
      * @throws ConfigException
      */
-    protected function setSrcDir($srcDir)
+    private function setSrcDir(?string $srcDir) : void
     {
         if ($srcDir === null) {
             $this->srcDir = null;
+        } elseif (\is_dir($srcDir)) {
+            $this->srcDir = \rtrim($srcDir, "\\/");
         } else {
-            if (is_dir($srcDir)) {
-                $this->srcDir = rtrim($srcDir, "\\/");
-            } else {
-                throw new ConfigException("Source directory {$srcDir} not found");
-            }
+            throw new ConfigException("Source directory {$srcDir} not found");
         }
     }
 
     /**
      * @return null|string
      */
-    public function srcDir()
+    public function srcDir() : ?string
     {
-        return $this->srcDir !== null ? $this->srcDir : $this->config()->srcDir();
+        return $this->srcDir ?? $this->config()->srcDir();
     }
 
     /**
      * @param string $destDir
      * @throws ConfigException
      */
-    protected function setDestDir($destDir)
+    private function setDestDir(string $destDir) : void
     {
-        $destDir = rtrim($destDir, "\\/");
-
-        if (!is_dir($destDir)) {
+        $destDir = \rtrim($destDir, "\\/");
+        if (!\is_dir($destDir)) {
             try {
                 ImageHelper::rmkdir($destDir);
             } catch (\RuntimeException $e) {
-                throw new ConfigException("Destination directory {$destDir} does not exist", $e->getCode(), $e);
+                throw new ConfigException("Destination directory {$destDir} does not exist", 0, $e);
             }
         }
 
@@ -309,40 +311,36 @@ class PresetConfig
     /**
      * @return string
      */
-    public function destDir()
+    public function destDir() : string
     {
-        return $this->destDir !== null ? $this->destDir : $this->config()->destDir();
+        return $this->destDir ?? $this->config()->destDir();
     }
 
     /**
      * @param null|string $webDir
      * @throws ConfigException
      */
-    protected function setWebDir($webDir)
+    private function setWebDir(?string $webDir) : void
     {
-        if ($webDir === null) {
-            $this->webDir = null;
+        if ($webDir === null || \is_dir($webDir)) {
+            $this->webDir = $webDir;
         } else {
-            if (is_dir($webDir)) {
-                $this->webDir = $webDir;
-            } else {
-                throw new ConfigException("Web directory {$webDir} not found");
-            }
+            throw new ConfigException("Web directory {$webDir} not found");
         }
     }
 
     /**
      * @return null|string
      */
-    public function webDir()
+    public function webDir() : ?string
     {
-        return $this->webDir !== null ? $this->webDir : $this->config()->webDir();
+        return $this->webDir ?? $this->config()->webDir();
     }
 
     /**
      * @param null|string $baseUrl
      */
-    protected function setBaseUrl($baseUrl)
+    private function setBaseUrl(?string $baseUrl) : void
     {
         $this->baseUrl = $baseUrl;
     }
@@ -350,135 +348,110 @@ class PresetConfig
     /**
      * @return null|string
      */
-    public function baseUrl()
+    public function baseUrl() : ?string
     {
-        return $this->baseUrl !== null ? $this->baseUrl : $this->config()->baseUrl();
+        return $this->baseUrl ?? $this->config()->baseUrl();
     }
 
     /**
      * @param int $jpegQuality
      * @throws ConfigException
      */
-    protected function setJpegQuality($jpegQuality)
+    private function setJpegQuality(int $jpegQuality) : void
     {
-        $value = (int)$jpegQuality;
-        if ($value < 0 || $value > 100) {
-            throw new ConfigException("Incorrect jpeg_quality value");
-        } else {
-            $this->jpegQuality = $value;
+        if ($jpegQuality < 0 || $jpegQuality > 100) {
+            throw new ConfigException('Incorrect jpeg_quality value');
         }
+        $this->jpegQuality = $jpegQuality;
     }
 
     /**
      * @return int
      */
-    public function jpegQuality()
+    public function jpegQuality() : int
     {
-        return $this->jpegQuality !== null ? $this->jpegQuality : $this->config()->jpegQuality();
+        return $this->jpegQuality ?? $this->config()->jpegQuality();
     }
 
     /**
      * @param int $pngCompressionLevel
      * @throws ConfigException
      */
-    protected function setPngCompressionLevel($pngCompressionLevel)
+    private function setPngCompressionLevel(int $pngCompressionLevel) : void
     {
-        $value = (int)$pngCompressionLevel;
-        if ($value < 0 || $value > 9) {
-            throw new ConfigException("Incorrect png_compression_level value");
-        } else {
-            $this->pngCompressionLevel = $value;
+        if ($pngCompressionLevel < 0 || $pngCompressionLevel > 9) {
+            throw new ConfigException('Incorrect png_compression_level value');
         }
+        $this->pngCompressionLevel = $pngCompressionLevel;
     }
 
     /**
      * @return int
      */
-    public function pngCompressionLevel()
+    public function pngCompressionLevel() : int
     {
-        return $this->pngCompressionLevel !== null ? $this->pngCompressionLevel : $this->config()->pngCompressionLevel();
+        return $this->pngCompressionLevel ?? $this->config()->pngCompressionLevel();
     }
 
     /**
      * @param int $pngCompressionFilter
      * @throws ConfigException
      */
-    protected function setPngCompressionFilter($pngCompressionFilter)
+    private function setPngCompressionFilter(int $pngCompressionFilter) : void
     {
-        $value = (int)$pngCompressionFilter;
-        if ($value < 0 || $value > 9) {
-            throw new ConfigException("Incorrect png_compression_filter value");
-        } else {
-            $this->pngCompressionFilter = $value;
+        if ($pngCompressionFilter < 0 || $pngCompressionFilter > 9) {
+            throw new ConfigException('Incorrect png_compression_filter value');
         }
+        $this->pngCompressionFilter = $pngCompressionFilter;
     }
 
     /**
      * @return int
      */
-    public function pngCompressionFilter()
+    public function pngCompressionFilter() : int
     {
-        return $this->pngCompressionFilter !== null ? $this->pngCompressionFilter : $this->config()->pngCompressionFilter();
+        return $this->pngCompressionFilter ?? $this->config()->pngCompressionFilter();
     }
 
     /**
-     * @param array $convertMap
-     *
-     * ['source formats' => 'destination format']
-     *
-     * For example,
-     * ```php
-     * [
-     *     'gif,wbmp' => 'png', //gif and wbmp to png
-     *     '*' => 'jpeg' //all others to jpeg
-     * ]
-     * ```
-     *
-     * supported formats for destination images: jpeg, png, gif, wbmp, xbm
-     *
+     * @param string $srcFormats
+     * @param string $destFormat
      * @throws ConfigException
      */
-    protected function setConvertMap($convertMap)
+    private function registerConvert(string $srcFormats, string $destFormat) : void
     {
-        $formats = ImageHelper::formats();
-
-        foreach ($convertMap as $srcStr => $dest) {
-            if (in_array($dest, ImageHelper::supportedDestinationFormats(), true)) {
-                foreach (explode(',', $srcStr) as $src) {
-                    if ($src === '*' || isset($formats[$src])) {
-                        $this->convertMap[$src] = $dest;
-                    } else {
-                        throw new ConfigException("Incorrect convert value. Unsupported source image format {$src}");
-                    }
+        if (\in_array($destFormat, ImageHelper::supportedDestinationFormats(), true)) {
+            $formats = ImageHelper::formats();
+            foreach (\explode(',', $srcFormats) as $srcFormat) {
+                if ($srcFormat === '*' || isset($formats[$srcFormat])) {
+                    $this->convertMap[$srcFormat] = $destFormat;
+                } else {
+                    throw new ConfigException("Incorrect convert value. Unsupported source image format {$srcFormat}");
                 }
-            } else {
-                throw new ConfigException("Incorrect convert value. Unsupported destination image format {$dest}");
             }
+        } else {
+            throw new ConfigException("Incorrect convert value. Unsupported destination image format {$destFormat}");
         }
     }
 
     /**
      * @return array
      */
-    public function convertMap()
+    public function convertMap() : array
     {
-        return $this->convertMap + $this->config()->convertMap();
+        return $this->convertMap;
     }
 
     /**
      * @param null|string $plugPath
      * @throws ConfigException
      */
-    protected function setPlugPath($plugPath)
+    private function setPlugPath(?string $plugPath) : void
     {
-        if ($plugPath === null) {
-            $this->plugPath = null;
+        if ($plugPath === null || \is_file($plugPath)) {
+            $this->plugPath = $plugPath;
         } else {
-            if (is_file($plugPath)) {
-                $this->plugPath = $plugPath;
-            } else {
-                throw new ConfigException("Plug file {$plugPath} not found");
-            }
+            throw new ConfigException("Plug file {$plugPath} not found");
         }
     }
 
@@ -486,35 +459,34 @@ class PresetConfig
      * @param bool $presetOnly
      * @return null|string
      */
-    public function plugPath($presetOnly = false)
+    public function plugPath(bool $presetOnly = false) : ?string
     {
         if ($presetOnly) {
             return $this->plugPath;
-        } else {
-            return $this->plugPath !== null ? $this->plugPath : $this->config()->plugPath();
         }
+        return $this->plugPath ?? $this->config()->plugPath();
     }
 
     /**
      * @param bool $processPlug
      */
-    protected function setProcessPlug($processPlug)
+    private function setProcessPlug(bool $processPlug) : void
     {
-        $this->processPlug = (bool)$processPlug;
+        $this->processPlug = $processPlug;
     }
 
     /**
      * @return bool
      */
-    public function isPlugProcessed()
+    public function isPlugProcessed() : bool
     {
-        return $this->processPlug !== null ? $this->processPlug : $this->config()->isPlugProcessed();
+        return $this->processPlug ?? $this->config()->isPlugProcessed();
     }
 
     /**
      * @param null|string $plugUrl
      */
-    protected function setPlugUrl($plugUrl)
+    private function setPlugUrl(?string $plugUrl) : void
     {
         $this->plugUrl = $plugUrl;
     }
@@ -523,27 +495,26 @@ class PresetConfig
      * @param bool $presetOnly
      * @return null|string
      */
-    public function plugUrl($presetOnly = false)
+    public function plugUrl(bool $presetOnly = false) : ?string
     {
         if ($presetOnly) {
             return $this->plugUrl;
-        } else {
-            return $this->plugUrl !== null ? $this->plugUrl : $this->config()->plugUrl();
         }
+        return $this->plugUrl ?? $this->config()->plugUrl();
     }
 
     /**
      * @param string $imageClass
      * @throws ConfigException
      */
-    protected function setImageClass($imageClass)
+    private function setImageClass(string $imageClass) : void
     {
-        if (class_exists($imageClass)) {
-            $interfaces = class_implements($imageClass);
-            if (in_array('LireinCore\Image\Manipulator', $interfaces, true)) {
+        if (\class_exists($imageClass)) {
+            $interfaces = \class_implements($imageClass);
+            if (\in_array(Manipulator::class, $interfaces, true)) {
                 $this->imageClass = $imageClass;
             } else {
-                throw new ConfigException("Class {$imageClass} don't implement interface \\LireinCore\\Image\\Manipulator");
+                throw new ConfigException("Class {$imageClass} don't implement interface " . Manipulator::class);
             }
         } else {
             throw new ConfigException("Class {$imageClass} not found");
@@ -553,15 +524,15 @@ class PresetConfig
     /**
      * @return string
      */
-    public function imageClass()
+    public function imageClass() : string
     {
-        return $this->imageClass !== null ? $this->imageClass : $this->config()->imageClass();
+        return $this->imageClass ?? $this->config()->imageClass();
     }
 
     /**
      * @return bool
      */
-    public function hasPostProcessors()
+    public function hasPostProcessors() : bool
     {
         return !empty($this->postProcessorsConfig);
     }
@@ -569,7 +540,7 @@ class PresetConfig
     /**
      * @return array
      */
-    public function postProcessorsConfig()
+    public function postProcessorsConfig() : array
     {
         return $this->postProcessorsConfig;
     }
@@ -577,7 +548,7 @@ class PresetConfig
     /**
      * @return bool
      */
-    public function hasEffects()
+    public function hasEffects() : bool
     {
         return !empty($this->effectsConfig);
     }
@@ -585,7 +556,7 @@ class PresetConfig
     /**
      * @return array
      */
-    public function effectsConfig()
+    public function effectsConfig() : array
     {
         return $this->effectsConfig;
     }
@@ -593,15 +564,15 @@ class PresetConfig
     /**
      * @param array $hashData
      */
-    protected function setHash(array $hashData)
+    private function setHash(array $hashData) : void
     {
-        $this->hash = substr(ImgHelper::hash($hashData), 0, 12);
+        $this->hash = \substr(ImgHelper::hash($hashData), 0, 12);
     }
 
     /**
      * @return string
      */
-    public function hash()
+    public function hash() : string
     {
         return $this->hash;
     }
@@ -609,7 +580,7 @@ class PresetConfig
     /**
      * @return Config
      */
-    protected function config()
+    private function config() : Config
     {
         return $this->config;
     }

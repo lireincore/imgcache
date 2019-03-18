@@ -5,22 +5,22 @@ namespace LireinCore\ImgCache;
 use LireinCore\Image\Manipulator;
 use LireinCore\Image\ImageHelper;
 
-class ImgHelper
+final class ImgHelper
 {
     /**
      * @param mixed $hashData
      * @return string
      */
-    public static function hash($hashData)
+    public static function hash($hashData) : string
     {
-        return md5(json_encode($hashData));
+        return \md5(\json_encode($hashData));
     }
 
     /**
      * @param string $driver
      * @return int
      */
-    public static function driverCode($driver)
+    public static function driverCode(string $driver) : int
     {
         switch ($driver) {
             case 'gmagick':
@@ -37,13 +37,15 @@ class ImgHelper
     /**
      * @return null|string
      */
-    public static function availableDriver()
+    public static function availableDriver() : ?string
     {
         if (ImageHelper::isImagickAvailable(Manipulator::MIN_REQUIRED_IM_VER)) {
             return 'imagick';
-        } elseif (ImageHelper::isGDAvailable(Manipulator::MIN_REQUIRED_GD_VER)) {
+        }
+        if (ImageHelper::isGDAvailable(Manipulator::MIN_REQUIRED_GD_VER)) {
             return 'gd';
-        } elseif (ImageHelper::isGmagickAvailable(Manipulator::MIN_REQUIRED_GM_VER)) {
+        }
+        if (ImageHelper::isGmagickAvailable(Manipulator::MIN_REQUIRED_GM_VER)) {
             return 'gmagick';
         }
 
@@ -56,7 +58,7 @@ class ImgHelper
      * @return object
      * @throws \RuntimeException
      */
-    public static function createClassArrayAssoc($class, array $params = [])
+    public static function createClassArrayAssoc(string $class, array $params = [])
     {
         try {
             $refClass = new \ReflectionClass($class);
@@ -65,7 +67,7 @@ class ImgHelper
         }
 
         $realParams = [];
-        if (method_exists($class, '__construct')) {
+        if (\method_exists($class, '__construct')) {
             try {
                 $refMethod = new \ReflectionMethod($class, '__construct');
             } catch (\ReflectionException $ex) {
@@ -77,7 +79,7 @@ class ImgHelper
                 /*if ($param->isPassedByReference()) {
                     // @todo: shall we raise some warning?
                 }*/
-                if (array_key_exists($pname, $params)) {
+                if (\array_key_exists($pname, $params)) {
                     $realParams[] = $params[$pname];
                 } elseif ($param->isDefaultValueAvailable()) {
                     $realParams[] = $param->getDefaultValue();

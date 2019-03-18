@@ -2,7 +2,7 @@
 
 namespace LireinCore\ImgCache\Exception;
 
-class ConfigException extends BaseException
+final class ConfigException extends \Exception
 {
 
 }

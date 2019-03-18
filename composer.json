@@ -17,7 +17,9 @@
     ],
     "require": {
         "ext-json": "*",
-        "lireincore/image": "^0.2.1"
+        "psr/log": "~1.0",
+        "lireincore/image": "^0.3",
+        "symfony/event-dispatcher": "~3.4 || ~4.0"
     },
     "autoload": {
         "psr-4": {

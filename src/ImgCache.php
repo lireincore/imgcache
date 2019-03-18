@@ -2,46 +2,63 @@
 
 namespace LireinCore\ImgCache;
 
+use Psr\Log\LoggerInterface;
 use LireinCore\Image\ImageHelper;
 use LireinCore\ImgCache\Exception\ConfigException;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
-class ImgCache
+final class ImgCache
 {
     /**
      * @var Config
      */
-    protected $config;
+    private $config;
 
     /**
      * @var PresetConfigRegistry
      */
-    protected $presetConfigRegistry;
+    private $presetConfigRegistry;
 
     /**
      * @var PathResolver
      */
-    protected $pathResolver;
+    private $pathResolver;
 
     /**
      * @var ImgProcessor
      */
-    protected $imgProcessor;
+    private $imgProcessor;
+
+    /**
+     * @var null|LoggerInterface
+     */
+    private $logger;
 
     /**
      * ImgCache constructor.
      *
      * @param array $config
+     * @param null|LoggerInterface $logger
+     * @param null|EventDispatcherInterface $eventDispatcher
      * @throws ConfigException
      */
-    public function __construct(array $config)
+    public function __construct(
+        array $config,
+        ?LoggerInterface $logger = null,
+        ?EventDispatcherInterface $eventDispatcher = null
+    )
     {
         $this->config = new Config($config);
-
-        $namedPresetDefinitions = isset($config['presets']) && is_array($config['presets']) ? $config['presets'] : [];
-
+        $this->logger = $logger;
+        $namedPresetDefinitions = isset($config['presets']) && \is_array($config['presets']) ? $config['presets'] : [];
         $this->presetConfigRegistry = new PresetConfigRegistry($this->config(), $namedPresetDefinitions);
         $this->pathResolver = new PathResolver($this->config(), $this->presetConfigRegistry());
-        $this->imgProcessor = new ImgProcessor($this->config(), $this->presetConfigRegistry());
+        $this->imgProcessor = new ImgProcessor(
+            $this->config(),
+            $this->presetConfigRegistry(),
+            $logger,
+            $eventDispatcher
+        );
     }
 
     /**
@@ -54,12 +71,8 @@ class ImgCache
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */
-    public function url($srcPath, $preset, $absolute = false, $useStub = true)
+    public function url(string $srcPath, $preset, bool $absolute = false, bool $useStub = true) : string
     {
-        if (!is_string($srcPath)) {
-            throw new \InvalidArgumentException("Аrgument 'srcPath' must be a string");
-        }
-
         $presetDefinitionHash = $this->presetDefinitionHash($preset);
         $this->checkUrlAvailability($presetDefinitionHash, $absolute);
 
@@ -67,17 +80,17 @@ class ImgCache
         if ($this->isWebPath($destPath, $presetDefinitionHash)) {
             if ($this->checkThumb($srcPath, $presetDefinitionHash)) {
                 return $this->urlFromPath($destPath, $presetDefinitionHash, $absolute);
-            } else {
-                if ($useStub) {
-                    return $this->stubUrlByHash($presetDefinitionHash, $absolute);
-                } else {
-                    $resolvedSrcPath = $this->resolveSrcPath($srcPath, $presetDefinitionHash);
-                    throw new \RuntimeException("Source image '{$resolvedSrcPath}' not found");
-                }
             }
-        } else {
-            throw new \RuntimeException("'{$destPath}' is not web accessible image");
+            if ($useStub) {
+                return $this->stubUrlByHash($presetDefinitionHash, $absolute);
+            }
+            $resolvedSrcPath = $this->resolveSrcPath($srcPath, $presetDefinitionHash);
+            if ($this->logger) {
+                $this->logger->warning("Source image '{$resolvedSrcPath}' not found and stub path or url is not configured");
+            }
+            throw new \RuntimeException("Source image '{$resolvedSrcPath}' not found and stub path or url is not configured");
         }
+        throw new \RuntimeException("'{$destPath}' is not web accessible image");
     }
 
     /**
@@ -89,23 +102,20 @@ class ImgCache
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */
-    public function path($srcPath, $preset, $useStub = true)
+    public function path(string $srcPath, $preset, bool $useStub = true) : string
     {
-        if (!is_string($srcPath)) {
-            throw new \InvalidArgumentException("Аrgument 'srcPath' must be a string");
-        }
-
         $presetDefinitionHash = $this->presetDefinitionHash($preset);
         if ($this->checkThumb($srcPath, $presetDefinitionHash)) {
             return $this->pathResolver()->destPath($srcPath, $presetDefinitionHash);
-        } else {
-            if ($useStub) {
-                return $this->stubPathByHash($presetDefinitionHash);
-            } else {
-                $resolvedSrcPath = $this->resolveSrcPath($srcPath, $presetDefinitionHash);
-                throw new \RuntimeException("Source image '{$resolvedSrcPath}' not found");
-            }
         }
+        if ($useStub) {
+            return $this->stubPathByHash($presetDefinitionHash);
+        }
+        $resolvedSrcPath = $this->resolveSrcPath($srcPath, $presetDefinitionHash);
+        if ($this->logger) {
+            $this->logger->warning("Source image '{$resolvedSrcPath}' not found and stub path or url is not configured");
+        }
+        throw new \RuntimeException("Source image '{$resolvedSrcPath}' not found and stub path or url is not configured");
     }
 
     /**
@@ -116,7 +126,7 @@ class ImgCache
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */
-    public function stubUrl($preset, $absolute = false)
+    public function stubUrl($preset, bool $absolute = false) : string
     {
         $presetDefinitionHash = $this->presetDefinitionHash($preset);
         $this->checkUrlAvailability($presetDefinitionHash, $absolute);
@@ -131,7 +141,7 @@ class ImgCache
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */
-    public function stubPath($preset)
+    public function stubPath($preset) : string
     {
         $presetDefinitionHash = $this->presetDefinitionHash($preset);
 
@@ -142,7 +152,7 @@ class ImgCache
      * @param string|array|null $preset preset name or dynamic preset definition
      * @throws ConfigException
      */
-    public function clearCache($preset = null)
+    public function clearCache($preset = null) : void
     {
         if ($preset !== null) {
             $presetDefinitionHash = $this->presetDefinitionHash($preset);
@@ -160,7 +170,7 @@ class ImgCache
      * @param bool $absolute
      * @throws ConfigException
      */
-    protected function checkUrlAvailability($presetDefinitionHash, $absolute = false)
+    private function checkUrlAvailability(string $presetDefinitionHash, bool $absolute = false) : void
     {
         $presetConfig = $this->presetConfig($presetDefinitionHash);
         $webDir = $presetConfig->webDir();
@@ -182,7 +192,7 @@ class ImgCache
      * @throws ConfigException
      * @throws \RuntimeException
      */
-    protected function stubUrlByHash($presetDefinitionHash, $absolute = false)
+    private function stubUrlByHash(string $presetDefinitionHash, bool $absolute = false) : string
     {
         $presetConfig = $this->presetConfig($presetDefinitionHash);
         $presetPlugPath = $presetConfig->plugPath(true);
@@ -191,9 +201,8 @@ class ImgCache
             if ($this->isWebPath($presetPlugDestPath, $presetDefinitionHash)) {
                 $this->checkPlug($presetPlugPath, $presetDefinitionHash);
                 return $this->urlFromPath($presetPlugDestPath, $presetDefinitionHash, $absolute);
-            } else {
-                throw new \RuntimeException("'{$presetPlugDestPath}' is not web accessible image");
             }
+            throw new \RuntimeException("'{$presetPlugDestPath}' is not web accessible image");
         }
 
         $presetPlugUrl = $presetConfig->plugUrl(true);
@@ -207,17 +216,15 @@ class ImgCache
             if ($this->isWebPath($plugDestPath, $presetDefinitionHash)) {
                 $this->checkPlug($plugPath, $presetDefinitionHash);
                 return $this->urlFromPath($plugDestPath, $presetDefinitionHash, $absolute);
-            } else {
-                throw new \RuntimeException("'{$plugDestPath}' is not web accessible image");
             }
+            throw new \RuntimeException("'{$plugDestPath}' is not web accessible image");
         }
 
         $plugUrl = $presetConfig->plugUrl();
         if ($plugUrl) {
             return $plugUrl;
-        } else {
-            throw new ConfigException("Path or url to image stub is not configured");
         }
+        throw new ConfigException('Stub path or url is not configured');
     }
 
     /**
@@ -226,16 +233,15 @@ class ImgCache
      * @throws ConfigException
      * @throws \RuntimeException
      */
-    protected function stubPathByHash($presetDefinitionHash)
+    private function stubPathByHash(string $presetDefinitionHash) : string
     {
         $presetConfig = $this->presetConfig($presetDefinitionHash);
         $plugPath = $presetConfig->plugPath();
         if ($plugPath !== null) {
             $this->checkPlug($plugPath, $presetDefinitionHash);
             return $this->pathResolver()->destPath($plugPath, $presetDefinitionHash, true);
-        } else {
-            throw new \RuntimeException("Path to image stub is not configured");
         }
+        throw new \RuntimeException('Stub path or url is not configured');
     }
 
     /**
@@ -245,13 +251,12 @@ class ImgCache
      * @return string
      * @throws ConfigException
      */
-    protected function urlFromPath($path, $presetDefinitionHash, $absolute = false)
+    private function urlFromPath(string $path, string $presetDefinitionHash, bool $absolute = false) : string
     {
         $presetConfig = $this->presetConfig($presetDefinitionHash);
         $webDir = $presetConfig->webDir();
         $baseUrl = $presetConfig->baseUrl();
-
-        $url = str_replace('\\', '/', substr($path, strlen($webDir)));
+        $url = \str_replace('\\', '/', \substr($path, \strlen($webDir)));
 
         return $absolute ? $baseUrl . $url : $url;
     }
@@ -262,14 +267,14 @@ class ImgCache
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */
-    protected function presetDefinitionHash($preset)
+    private function presetDefinitionHash($preset) : string
     {
-        if (is_string($preset)) {
+        if (\is_string($preset)) {
             $presetDefinitionHash = $this->presetConfigRegistry()->hashByName($preset);
             if (null === $presetDefinitionHash) {
                 throw new \RuntimeException("Preset '{$preset}' not found");
             }
-        } elseif (is_array($preset)) {
+        } elseif (\is_array($preset)) {
             $presetDefinitionHash = $this->presetConfigRegistry()->addPresetDefinition($preset);
         } else {
             throw new \InvalidArgumentException("Аrgument 'preset' must be a string or an array");
@@ -284,12 +289,12 @@ class ImgCache
      * @return bool
      * @throws ConfigException
      */
-    protected function isWebPath($webPath, $presetDefinitionHash)
+    private function isWebPath(string $webPath, string $presetDefinitionHash) : bool
     {
         $presetConfig = $this->presetConfig($presetDefinitionHash);
         $webDir = $presetConfig->webDir();
         if ($webDir !== null) {
-            return false === strpos($webPath, $webDir) ? false : true;
+            return false !== \strpos($webPath, $webDir) ?: false;
         }
 
         return false;
@@ -302,12 +307,12 @@ class ImgCache
      * @throws ConfigException
      * @throws \RuntimeException
      */
-    protected function checkThumb($srcPath, $presetDefinitionHash)
+    private function checkThumb(string $srcPath, string $presetDefinitionHash) : bool
     {
         $destPath = $this->pathResolver()->destPath($srcPath, $presetDefinitionHash);
-        if (!is_file($destPath)) {
+        if (!\is_file($destPath)) {
             $resolvedSrcPath = $this->resolveSrcPath($srcPath, $presetDefinitionHash);
-            if (is_file($resolvedSrcPath)) {
+            if (\is_file($resolvedSrcPath)) {
                 $format = $this->pathResolver()->destFormat($srcPath, $presetDefinitionHash);
                 $this->imgProcessor()->createThumb($resolvedSrcPath, $destPath, $format, $presetDefinitionHash);
             } else {
@@ -324,10 +329,10 @@ class ImgCache
      * @throws ConfigException
      * @throws \RuntimeException
      */
-    protected function checkPlug($plugPath, $presetDefinitionHash)
+    private function checkPlug(string $plugPath, string $presetDefinitionHash) : void
     {
         $plugDestPath = $this->pathResolver()->destPath($plugPath, $presetDefinitionHash, true);
-        if (!is_file($plugDestPath)) {
+        if (!\is_file($plugDestPath)) {
             $format = $this->pathResolver()->destFormat($plugPath, $presetDefinitionHash, true);
             $this->imgProcessor()->createThumb($plugPath, $plugDestPath, $format, $presetDefinitionHash, true);
         }
@@ -339,13 +344,13 @@ class ImgCache
      * @return string
      * @throws ConfigException
      */
-    protected function resolveSrcPath($srcPath, $presetDefinitionHash)
+    private function resolveSrcPath(string $srcPath, string $presetDefinitionHash) : string
     {
         $presetConfig = $this->presetConfig($presetDefinitionHash);
         $srcDir = $presetConfig->srcDir();
 
         if (null !== $srcDir) {
-            $srcPath = ltrim($srcPath, "\\/");
+            $srcPath = \ltrim($srcPath, "\\/");
             $resolvedSrcPath = $srcDir . DIRECTORY_SEPARATOR . $srcPath;
         } else {
             $resolvedSrcPath = $srcPath;
@@ -357,7 +362,7 @@ class ImgCache
     /**
      * @return Config
      */
-    protected function config()
+    private function config() : Config
     {
         return $this->config;
     }
@@ -365,7 +370,7 @@ class ImgCache
     /**
      * @return PresetConfigRegistry
      */
-    protected function presetConfigRegistry()
+    private function presetConfigRegistry() : PresetConfigRegistry
     {
         return $this->presetConfigRegistry;
     }
@@ -373,7 +378,7 @@ class ImgCache
     /**
      * @return PathResolver
      */
-    protected function pathResolver()
+    private function pathResolver() : PathResolver
     {
         return $this->pathResolver;
     }
@@ -381,7 +386,7 @@ class ImgCache
     /**
      * @return ImgProcessor
      */
-    protected function imgProcessor()
+    private function imgProcessor() : ImgProcessor
     {
         return $this->imgProcessor;
     }
@@ -391,7 +396,7 @@ class ImgCache
      * @return PresetConfig
      * @throws ConfigException
      */
-    protected function presetConfig($presetDefinitionHash)
+    private function presetConfig(string $presetDefinitionHash) : PresetConfig
     {
         return $this->presetConfigRegistry()->presetConfig($presetDefinitionHash);
     }
