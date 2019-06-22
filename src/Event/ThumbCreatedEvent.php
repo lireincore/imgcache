@@ -2,9 +2,9 @@
 
 namespace LireinCore\ImgCache\Event;
 
-use Symfony\Component\EventDispatcher\Event;
+use Psr\EventDispatcher\StoppableEventInterface;
 
-final class ThumbCreatedEvent extends Event
+final class ThumbCreatedEvent implements StoppableEventInterface
 {
     public const NAME = 'lireincore_imgcache.thumb_created';
 
@@ -21,6 +21,11 @@ final class ThumbCreatedEvent extends Event
      * @var string
      */
     private $destPath;
+
+    /**
+     * @var bool
+     */
+    private $propagationStopped = false;
 
     /**
      * ThumbCreatedEvent constructor.
@@ -48,5 +53,18 @@ final class ThumbCreatedEvent extends Event
     public function destPath() : string
     {
         return $this->destPath;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isPropagationStopped() : bool
+    {
+        return $this->propagationStopped;
+    }
+
+    public function stopPropagation() : void
+    {
+        $this->propagationStopped = true;
     }
 }

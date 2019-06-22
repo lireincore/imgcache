@@ -3,9 +3,9 @@
 namespace LireinCore\ImgCache;
 
 use Psr\Log\LoggerInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use LireinCore\Image\ImageHelper;
 use LireinCore\ImgCache\Exception\ConfigException;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 final class ImgCache
 {

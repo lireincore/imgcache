@@ -3,12 +3,12 @@
 namespace LireinCore\ImgCache;
 
 use Psr\Log\LoggerInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use LireinCore\Image\Effect;
 use LireinCore\Image\PostProcessor;
 use LireinCore\Image\Manipulator;
 use LireinCore\ImgCache\Event\ThumbCreatedEvent;
 use LireinCore\ImgCache\Exception\ConfigException;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 final class ImgProcessor
 {
@@ -121,7 +121,7 @@ final class ImgProcessor
         }
         if ($this->eventDispatcher) {
             $event = new ThumbCreatedEvent($srcPath, $destPath);
-            $this->eventDispatcher->dispatch(ThumbCreatedEvent::NAME, $event);
+            $this->eventDispatcher->dispatch($event);
         }
         if (!$isPlug || $processPlug) {
             $this->applyPostProcessors($destPath, $format, $presetDefinitionHash);

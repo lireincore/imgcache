@@ -1,5 +1,9 @@
 # CHANGELOG
 
+### 0.5.0 (2019-06-22)
+
+  * Added support for PSR-14 event dispatcher
+
 ### 0.4.0 (2019-02-18)
 
   * Added type hinting
