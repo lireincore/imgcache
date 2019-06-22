@@ -2,6 +2,7 @@
 
 ### 0.5.0 (2019-06-22)
 
+  * Required php7.2
   * Added support for PSR-14 event dispatcher
 
 ### 0.4.0 (2019-02-18)
