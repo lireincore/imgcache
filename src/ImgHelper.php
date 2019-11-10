@@ -2,6 +2,10 @@
 
 namespace LireinCore\ImgCache;
 
+use ReflectionClass;
+use ReflectionMethod;
+use RuntimeException;
+use ReflectionException;
 use LireinCore\Image\Manipulator;
 use LireinCore\Image\ImageHelper;
 
@@ -56,22 +60,22 @@ final class ImgHelper
      * @param string $class
      * @param array $params
      * @return object
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
     public static function createClassArrayAssoc(string $class, array $params = [])
     {
         try {
-            $refClass = new \ReflectionClass($class);
-        } catch (\ReflectionException $ex) {
-            throw new \RuntimeException("Class {$class} does not exist", 0, $ex);
+            $refClass = new ReflectionClass($class);
+        } catch (ReflectionException $ex) {
+            throw new RuntimeException("Class {$class} does not exist", 0, $ex);
         }
 
         $realParams = [];
         if (\method_exists($class, '__construct')) {
             try {
-                $refMethod = new \ReflectionMethod($class, '__construct');
-            } catch (\ReflectionException $ex) {
-                throw new \RuntimeException("Method '__construct' does not exist", 0, $ex);
+                $refMethod = new ReflectionMethod($class, '__construct');
+            } catch (ReflectionException $ex) {
+                throw new RuntimeException("Method '__construct' does not exist", 0, $ex);
             }
 
             foreach ($refMethod->getParameters() as $i => $param) {
@@ -84,7 +88,7 @@ final class ImgHelper
                 } elseif ($param->isDefaultValueAvailable()) {
                     $realParams[] = $param->getDefaultValue();
                 } else {
-                    throw new \RuntimeException("Call to {$class}::__construct missing parameter nr. " . ($i + 1) . ": '{$pname}'");
+                    throw new RuntimeException("Call to {$class}::__construct missing parameter nr. " . ($i + 1) . ": '{$pname}'");
                 }
             }
         }

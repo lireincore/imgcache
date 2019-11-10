@@ -14,7 +14,7 @@ And, you can use [lireincore/LireinCoreImgCacheBundle](https://github.com/lirein
 
 ## Install
 
-Add the `"lireincore/imgcache": "^0.5"` package to your `require` section in the `composer.json` file
+Add the `"lireincore/imgcache": "^0.6"` package to your `require` section in the `composer.json` file
 
 or
 

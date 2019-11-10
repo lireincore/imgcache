@@ -1,5 +1,11 @@
 # CHANGELOG
 
+### 0.6.0 (2019-11-10)
+
+  * Added ImgProcessorInterface and ImgProcessorFactoryInterface
+  * Added PathResolverInterface and PathResolverFactoryInterface
+  * Added createThumbIfNotExists option
+
 ### 0.5.0 (2019-06-22)
 
   * Required php7.2

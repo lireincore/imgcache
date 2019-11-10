@@ -6,8 +6,6 @@ use Psr\EventDispatcher\StoppableEventInterface;
 
 final class ThumbCreatedEvent implements StoppableEventInterface
 {
-    public const NAME = 'lireincore_imgcache.thumb_created';
-
     /**
      * Source image path
      *
@@ -23,6 +21,20 @@ final class ThumbCreatedEvent implements StoppableEventInterface
     private $destPath;
 
     /**
+     * Thumb format
+     *
+     * @var string
+     */
+    private $destFormat;
+
+    /**
+     * Is stub
+     *
+     * @var bool
+     */
+    private $isStub;
+
+    /**
      * @var bool
      */
     private $propagationStopped = false;
@@ -32,11 +44,15 @@ final class ThumbCreatedEvent implements StoppableEventInterface
      *
      * @param string $srcPath
      * @param string $destPath
+     * @param string $destFormat
+     * @param bool $isStub
      */
-    public function __construct(string $srcPath, string $destPath)
+    public function __construct(string $srcPath, string $destPath, string $destFormat, bool $isStub)
     {
         $this->srcPath = $srcPath;
         $this->destPath = $destPath;
+        $this->destFormat = $destFormat;
+        $this->isStub = $isStub;
     }
 
     /**
@@ -53,6 +69,22 @@ final class ThumbCreatedEvent implements StoppableEventInterface
     public function destPath() : string
     {
         return $this->destPath;
+    }
+
+    /**
+     * @return string
+     */
+    public function destFormat() : string
+    {
+        return $this->destFormat;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isStub() : bool
+    {
+        return $this->isStub;
     }
 
     /**

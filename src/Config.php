@@ -34,7 +34,7 @@ final class Config
     private const DEFAULT_JPEG_QUALITY = 75;
     private const DEFAULT_PNG_COMPRESSION_LEVEL = 7;
     private const DEFAULT_PNG_COMPRESSION_FILTER = 5;
-    private const DEFAULT_PROCESS_PLUG = false;
+    private const DEFAULT_PROCESS_STUB = false;
 
     /**
      * @var string graphic library for all presets: 'gd', 'imagick', 'gmagick'
@@ -84,19 +84,19 @@ final class Config
     private $pngCompressionFilter;
 
     /**
-     * @var string absolute path to plug for all presets (used if original image is not available)
+     * @var string absolute path to stub for all presets (used if original image is not available)
      */
-    private $plugPath;
+    private $stubPath;
 
     /**
-     * @var bool apply preset effects and postprocessors to plug?
+     * @var bool apply preset effects and postprocessors to stub?
      */
-    private $processPlug;
+    private $processStub;
 
     /**
-     * @var string url to get the plug from a third-party service (used if original image is not available)
+     * @var string url to get the stub from a third-party service (used if original image is not available)
      */
-    private $plugUrl;
+    private $stubUrl;
 
     /**
      * @var array formats convert map for all presets
@@ -217,17 +217,17 @@ final class Config
         }
 
         if (isset($config['plug']['path'])) {
-            $this->setPlugPath($config['plug']['path']);
+            $this->setStubPath($config['plug']['path']);
         }
 
         if (isset($config['plug']['process'])) {
-            $this->setProcessPlug($config['plug']['process']);
+            $this->setProcessStub($config['plug']['process']);
         } else {
-            $this->setProcessPlug(static::DEFAULT_PROCESS_PLUG);
+            $this->setProcessStub(static::DEFAULT_PROCESS_STUB);
         }
 
         if (isset($config['plug']['url'])) {
-            $this->setPlugUrl($config['plug']['url']);
+            $this->setStubUrl($config['plug']['url']);
         }
 
         if (isset($config['effects_map'])) {
@@ -465,56 +465,56 @@ final class Config
     }
 
     /**
-     * @param null|string $plugPath
+     * @param null|string $stubPath
      * @throws ConfigException
      */
-    private function setPlugPath(?string $plugPath) : void
+    private function setStubPath(?string $stubPath) : void
     {
-        if ($plugPath === null || \is_file($plugPath)) {
-            $this->plugPath = $plugPath;
+        if ($stubPath === null || \is_file($stubPath)) {
+            $this->stubPath = $stubPath;
         } else {
-            throw new ConfigException("Plug file {$plugPath} not found");
+            throw new ConfigException("Stub file {$stubPath} not found");
         }
     }
 
     /**
      * @return null|string
      */
-    public function plugPath() : ?string
+    public function stubPath() : ?string
     {
-        return $this->plugPath;
+        return $this->stubPath;
     }
 
     /**
-     * @param bool $processPlug
+     * @param bool $processStub
      */
-    private function setProcessPlug(bool $processPlug) : void
+    private function setProcessStub(bool $processStub) : void
     {
-        $this->processPlug = $processPlug;
+        $this->processStub = $processStub;
     }
 
     /**
      * @return bool
      */
-    public function isPlugProcessed() : bool
+    public function isStubProcessed() : bool
     {
-        return $this->processPlug;
+        return $this->processStub;
     }
 
     /**
-     * @param null|string $plugUrl
+     * @param null|string $stubUrl
      */
-    private function setPlugUrl(?string $plugUrl) : void
+    private function setStubUrl(?string $stubUrl) : void
     {
-        $this->plugUrl = $plugUrl;
+        $this->stubUrl = $stubUrl;
     }
 
     /**
      * @return null|string
      */
-    public function plugUrl() : ?string
+    public function stubUrl() : ?string
     {
-        return $this->plugUrl;
+        return $this->stubUrl;
     }
 
     /**

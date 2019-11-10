@@ -2,15 +2,15 @@
 
 namespace LireinCore\ImgCache;
 
-use Psr\Log\LoggerInterface;
-use Psr\EventDispatcher\EventDispatcherInterface;
+use Exception;
+use RuntimeException;
+use InvalidArgumentException;
 use LireinCore\Image\Effect;
 use LireinCore\Image\PostProcessor;
 use LireinCore\Image\Manipulator;
-use LireinCore\ImgCache\Event\ThumbCreatedEvent;
 use LireinCore\ImgCache\Exception\ConfigException;
 
-final class ImgProcessor
+final class ImgProcessor implements ImgProcessorInterface
 {
     /**
      * @var Config
@@ -38,34 +38,18 @@ final class ImgProcessor
     private $postProcessors = [];
 
     /**
-     * @var null|LoggerInterface
-     */
-    private $logger;
-
-    /**
-     * @var null|EventDispatcherInterface
-     */
-    private $eventDispatcher;
-
-    /**
      * ImgProcessor constructor.
      *
      * @param Config $config
      * @param PresetConfigRegistry $presetConfigRegistry
-     * @param null|LoggerInterface $logger
-     * @param null|EventDispatcherInterface $eventDispatcher
      */
     public function __construct(
         Config $config,
-        PresetConfigRegistry $presetConfigRegistry,
-        ?LoggerInterface $logger = null,
-        ?EventDispatcherInterface $eventDispatcher = null
+        PresetConfigRegistry $presetConfigRegistry
     )
     {
         $this->config = $config;
         $this->presetConfigRegistry = $presetConfigRegistry;
-        $this->logger = $logger;
-        $this->eventDispatcher = $eventDispatcher;
     }
 
     /**
@@ -73,16 +57,16 @@ final class ImgProcessor
      * @param string $destPath
      * @param string $format
      * @param string $presetDefinitionHash
-     * @param bool $isPlug
+     * @param bool $isStub
      * @throws ConfigException
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
     public function createThumb(
         string $srcPath,
         string $destPath,
         string $format,
         string $presetDefinitionHash,
-        bool $isPlug = false
+        bool $isStub = false
     ) : void
     {
         $presetConfig = $this->presetConfig($presetDefinitionHash);
@@ -91,19 +75,16 @@ final class ImgProcessor
         try {
             /** @var Manipulator $manipulator */
             $manipulator = new $class($driverCode, false);
-        } catch (\Exception $ex) {
-            throw new \RuntimeException('Graphic library error', 0, $ex);
+        } catch (Exception $ex) {
+            throw new RuntimeException('Graphic library error', 0, $ex);
         }
         try {
             $manipulator->open($srcPath);
-        } catch (\Exception $ex) {
-            if ($this->logger) {
-                $this->logger->error("Error opening source image '{$srcPath}'");
-            }
-            throw new \RuntimeException("Error opening source image '{$srcPath}'", 0, $ex);
+        } catch (Exception $ex) {
+            throw new RuntimeException("Error opening source image '{$srcPath}'", 0, $ex);
         }
-        $processPlug = $presetConfig->isPlugProcessed();
-        if (!$isPlug || $processPlug) {
+        $processStub = $presetConfig->isStubProcessed();
+        if (!$isStub || $processStub) {
             $this->applyEffects($manipulator, $presetDefinitionHash);
         }
         try {
@@ -113,17 +94,10 @@ final class ImgProcessor
                 'png_compression_level'  => $presetConfig->pngCompressionLevel(),
                 'png_compression_filter' => $presetConfig->pngCompressionFilter(),
             ]);
-        } catch (\Exception $ex) {
-            if ($this->logger) {
-                $this->logger->error("Error saving image '{$destPath}'");
-            }
-            throw new \RuntimeException("Error saving image '{$destPath}'", 0, $ex);
+        } catch (Exception $ex) {
+            throw new RuntimeException("Error saving image '{$destPath}'", 0, $ex);
         }
-        if ($this->eventDispatcher) {
-            $event = new ThumbCreatedEvent($srcPath, $destPath);
-            $this->eventDispatcher->dispatch($event);
-        }
-        if (!$isPlug || $processPlug) {
+        if (!$isStub || $processStub) {
             $this->applyPostProcessors($destPath, $format, $presetDefinitionHash);
         }
     }
@@ -132,9 +106,8 @@ final class ImgProcessor
      * @param Manipulator $manipulator
      * @param string $presetDefinitionHash
      * @throws ConfigException
-     * @throws \InvalidArgumentException
-     * @throws \OutOfBoundsException
-     * @throws \RuntimeException
+     * @throws InvalidArgumentException
+     * @throws RuntimeException
      */
     private function applyEffects(Manipulator $manipulator, string $presetDefinitionHash) : void
     {
@@ -155,11 +128,8 @@ final class ImgProcessor
                 foreach ($this->presetsEffects[$presetDefinitionHash] as $effect) {
                     $manipulator->apply($effect);
                 }
-            } catch (\Exception $ex) {
-                if ($this->logger) {
-                    $this->logger->error('Error applying effects');
-                }
-                throw new \RuntimeException('Error applying effects', 0, $ex);
+            } catch (Exception $ex) {
+                throw new RuntimeException('Error applying effects', 0, $ex);
             }
         }
     }
@@ -169,7 +139,7 @@ final class ImgProcessor
      * @param string $format
      * @param string $presetDefinitionHash
      * @throws ConfigException
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
     private function applyPostProcessors(string $path, string $format, string $presetDefinitionHash) : void
     {
@@ -192,11 +162,8 @@ final class ImgProcessor
                         $postProcessor->process($path);
                     }
                 }
-            } catch (\Exception $ex) {
-                if ($this->logger) {
-                    $this->logger->error('Error applying postprocessors');
-                }
-                throw new \RuntimeException('Error applying postprocessors', 0, $ex);
+            } catch (Exception $ex) {
+                throw new RuntimeException('Error applying postprocessors', 0, $ex);
             }
         } elseif ($config->hasPostProcessors()) {
             if (empty($this->postProcessors)) {
@@ -214,11 +181,8 @@ final class ImgProcessor
                         $postProcessor->process($path);
                     }
                 }
-            } catch (\Exception $ex) {
-                if ($this->logger) {
-                    $this->logger->error('Error applying postprocessors');
-                }
-                throw new \RuntimeException('Error applying postprocessors', 0, $ex);
+            } catch (Exception $ex) {
+                throw new RuntimeException('Error applying postprocessors', 0, $ex);
             }
         }
     }

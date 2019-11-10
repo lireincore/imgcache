@@ -65,8 +65,10 @@ final class PresetConfigRegistry
         }
         if (isset($this->presetDefinitions[$presetDefinitionHash])) {
             $this->presetConfigs[$presetDefinitionHash] = new PresetConfig($this->config, $this->presetDefinitions[$presetDefinitionHash]);
+
             return $this->presetConfigs[$presetDefinitionHash];
         }
+
         return null;
     }
 
@@ -118,6 +120,7 @@ final class PresetConfigRegistry
                 \ksort($item['params']);
             }
             \ksort($item);
+
             return $item;
         }, $configItems);
     }

@@ -61,19 +61,19 @@ final class PresetConfig
     private $convertMap = [];
 
     /**
-     * @var string absolute path to plug for all presets (used if original image is not available)
+     * @var string absolute path to stub for all presets (used if original image is not available)
      */
-    private $plugPath;
+    private $stubPath;
 
     /**
-     * @var bool apply preset effects and postprocessors to plug?
+     * @var bool apply preset effects and postprocessors to stub?
      */
-    private $processPlug;
+    private $processStub;
 
     /**
-     * @var string url to get the plug from a third-party service (used if original image is not available)
+     * @var string url to get the stub from a third-party service (used if original image is not available)
      */
-    private $plugUrl;
+    private $stubUrl;
 
     /**
      * @var array
@@ -154,15 +154,15 @@ final class PresetConfig
         }
 
         if (!empty($config['plug']['path'])) {
-            $this->setPlugPath($config['plug']['path']);
+            $this->setStubPath($config['plug']['path']);
         }
 
         if (isset($config['plug']['process'])) {
-            $this->setProcessPlug($config['plug']['process']);
+            $this->setProcessStub($config['plug']['process']);
         }
 
         if (!empty($config['plug']['url'])) {
-            $this->setPlugUrl($config['plug']['url']);
+            $this->setStubUrl($config['plug']['url']);
         }
 
         if (isset($config['effects'])) {
@@ -237,7 +237,7 @@ final class PresetConfig
      */
     private function sortEffectsOrPostProcessorsConfig(array $configItems) : array
     {
-        return \array_map(function ($item) {
+        return \array_map(static function ($item) {
             if (!empty($item['params'])) {
                 \ksort($item['params']);
             }
@@ -443,15 +443,15 @@ final class PresetConfig
     }
 
     /**
-     * @param null|string $plugPath
+     * @param null|string $stubPath
      * @throws ConfigException
      */
-    private function setPlugPath(?string $plugPath) : void
+    private function setStubPath(?string $stubPath) : void
     {
-        if ($plugPath === null || \is_file($plugPath)) {
-            $this->plugPath = $plugPath;
+        if ($stubPath === null || \is_file($stubPath)) {
+            $this->stubPath = $stubPath;
         } else {
-            throw new ConfigException("Plug file {$plugPath} not found");
+            throw new ConfigException("Stub file {$stubPath} not found");
         }
     }
 
@@ -459,48 +459,48 @@ final class PresetConfig
      * @param bool $presetOnly
      * @return null|string
      */
-    public function plugPath(bool $presetOnly = false) : ?string
+    public function stubPath(bool $presetOnly = false) : ?string
     {
         if ($presetOnly) {
-            return $this->plugPath;
+            return $this->stubPath;
         }
-        return $this->plugPath ?? $this->config()->plugPath();
+        return $this->stubPath ?? $this->config()->stubPath();
     }
 
     /**
-     * @param bool $processPlug
+     * @param bool $processStub
      */
-    private function setProcessPlug(bool $processPlug) : void
+    private function setProcessStub(bool $processStub) : void
     {
-        $this->processPlug = $processPlug;
+        $this->processStub = $processStub;
     }
 
     /**
      * @return bool
      */
-    public function isPlugProcessed() : bool
+    public function isStubProcessed() : bool
     {
-        return $this->processPlug ?? $this->config()->isPlugProcessed();
+        return $this->processStub ?? $this->config()->isStubProcessed();
     }
 
     /**
-     * @param null|string $plugUrl
+     * @param null|string $stubUrl
      */
-    private function setPlugUrl(?string $plugUrl) : void
+    private function setStubUrl(?string $stubUrl) : void
     {
-        $this->plugUrl = $plugUrl;
+        $this->stubUrl = $stubUrl;
     }
 
     /**
      * @param bool $presetOnly
      * @return null|string
      */
-    public function plugUrl(bool $presetOnly = false) : ?string
+    public function stubUrl(bool $presetOnly = false) : ?string
     {
         if ($presetOnly) {
-            return $this->plugUrl;
+            return $this->stubUrl;
         }
-        return $this->plugUrl ?? $this->config()->plugUrl();
+        return $this->stubUrl ?? $this->config()->stubUrl();
     }
 
     /**
